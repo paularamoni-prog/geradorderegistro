@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador de Registro Pedagógico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
+<script>
+  // Se alguma das bibliotecas acima não carregar (CDN bloqueado, sem
+  // internet no momento, etc.), tenta novamente por um CDN alternativo
+  // antes de desistir — assim o app funciona mesmo se um provedor falhar.
+  function ensureLib(checkFn, fallbackUrl){
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        if (!checkFn()){
+          const s = document.createElement('script');
+          s.src = fallbackUrl;
+          document.head.appendChild(s);
+        }
+      }, 800);
+    });
+  }
+  ensureLib(() => typeof window.html2canvas !== 'undefined', 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
+  ensureLib(() => typeof window.jspdf !== 'undefined', 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
+  ensureLib(() => typeof window.PptxGenJS !== 'undefined', 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js');
+</script>
+<style>
+  :root{
+    --teal-900:#1F3D3A;
+    --teal-700:#2F6B63;
+    --teal-500:#3F8A80;
+    --clay:#E2793D;
+    --clay-dark:#C15F28;
+    --paper:#FAF8F4;
+    --panel:#FFFFFF;
+    --ink:#1F2A24;
+    --ink-soft:#5B6B63;
+    --line:#DCE3DD;
+    --danger:#C0392B;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Work Sans', sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .app{max-width:1500px; margin:0 auto; padding:28px 24px 60px;}
+  header{margin-bottom:24px;}
+  header h1{
+    font-family:'Poppins', sans-serif;
+    font-size:28px;
+    color:var(--teal-900);
+    margin:0 0 6px;
+    letter-spacing:.2px;
+  }
+  header p{margin:0; color:var(--ink-soft); font-size:15px; max-width:640px;}
+
+  .layout{display:grid; grid-template-columns:380px 1fr; gap:24px; align-items:start;}
+  @media (max-width:980px){ .layout{grid-template-columns:1fr;} }
+
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px;}
+  .controls{position:sticky; top:20px; max-height:calc(100vh - 40px); overflow-y:auto;}
+  .block + .block{margin-top:26px; padding-top:22px; border-top:1px solid var(--line);}
+  .block h2{
+    font-family:'Poppins', sans-serif;
+    font-size:14px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--teal-700);
+    margin:0 0 12px;
+  }
+
+  .dropzone{
+    border:2px dashed var(--teal-500);
+    border-radius:var(--radius);
+    padding:22px 14px;
+    text-align:center;
+    font-size:13.5px;
+    color:var(--teal-700);
+    cursor:pointer;
+    background:#F1F7F5;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .dropzone:hover, .dropzone.dragover{background:#E6F1EC; border-color:var(--clay);}
+  .counter{margin-top:10px; font-size:12.5px; color:var(--ink-soft); font-weight:600;}
+  .counter.warn{color:var(--danger);}
+
+  .thumb-list{list-style:none; margin:14px 0 0; padding:0; display:flex; flex-direction:column; gap:8px;}
+  .thumb-item{
+    display:flex; align-items:center; gap:10px;
+    border:1px solid var(--line); border-radius:8px; padding:6px;
+  }
+  .thumb-item img{width:46px; height:46px; object-fit:cover; border-radius:6px; flex-shrink:0;}
+  .thumb-item .thumb-name{flex:1; font-size:12px; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .thumb-item .thumb-actions{display:flex; gap:4px;}
+  .icon-btn{
+    border:none; background:#EEF3F1; color:var(--teal-700); width:24px; height:24px;
+    border-radius:6px; cursor:pointer; font-size:12px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .icon-btn:hover{background:var(--teal-500); color:#fff;}
+  .icon-btn.remove{color:var(--danger);}
+  .icon-btn.remove:hover{background:var(--danger); color:#fff;}
+
+  label{display:block; font-size:12.5px; font-weight:600; color:var(--ink); margin-top:14px; margin-bottom:6px;}
+  label:first-of-type{margin-top:0;}
+  input[type=text], textarea{
+    width:100%; border:1px solid var(--line); border-radius:8px; padding:9px 10px;
+    font-family:'Work Sans', sans-serif; font-size:13.5px; color:var(--ink); resize:vertical;
+  }
+  input[type=text]:focus, textarea:focus{outline:2px solid var(--teal-500); outline-offset:1px;}
+
+  .skill-entry{
+    border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:10px; background:#FBFCFB;
+  }
+  .skill-entry .skill-row{display:flex; gap:8px; align-items:flex-start;}
+  .skill-entry input[type=text]{width:140px; flex-shrink:0;}
+  .skill-entry textarea{flex:1; min-height:44px;}
+  .skill-entry .icon-btn{margin-top:0;}
+
+  .btn-secondary{
+    width:100%; padding:9px; border-radius:8px; border:1px dashed var(--teal-500);
+    background:transparent; color:var(--teal-700); font-weight:600; font-size:13px; cursor:pointer;
+  }
+  .btn-secondary:hover{background:#EEF6F3;}
+
+  .align-group{display:flex; gap:6px;}
+  .align-btn{
+    flex:1; padding:8px 4px; border-radius:8px; border:1px solid var(--line);
+    background:#fff; color:var(--ink-soft); font-size:12px; font-weight:600; cursor:pointer;
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .align-btn:hover{border-color:var(--teal-500); color:var(--teal-700);}
+  .align-btn.active{background:var(--teal-700); border-color:var(--teal-700); color:#fff;}
+
+  .export-bar{display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center;}
+  .export-bar button{
+    padding:11px 18px; border-radius:8px; border:none; font-weight:600; font-size:13.5px; cursor:pointer;
+    display:flex; align-items:center; gap:8px;
+  }
+  #exportPdfBtn{background:var(--teal-700); color:#fff;}
+  #exportPdfBtn:hover{background:var(--teal-900);}
+  #exportPptxBtn{background:var(--clay); color:#fff;}
+  #exportPptxBtn:hover{background:var(--clay-dark);}
+  #saveBtn{background:#EEF3F1; color:var(--teal-700); border:1px solid var(--teal-500);}
+  #saveBtn:hover{background:var(--teal-500); color:#fff;}
+  #newBtn{background:#fff; color:var(--ink-soft); border:1px solid var(--line);}
+  #newBtn:hover{background:#F3F1EE; color:var(--ink);}
+  .export-status{font-size:12.5px; color:var(--ink-soft);}
+
+  /* ---- Preview / document look ---- */
+  .preview-wrap{overflow:auto;}
+  .preview-box{
+    aspect-ratio: 16 / 9;
+    width:100%;
+    background:#fff;
+    border:3px solid #111;
+    border-radius:4px;
+    display:flex;
+    padding:14px;
+    gap:14px;
+  }
+  .photo-grid{
+    flex:0 0 74%;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    min-width:0;
+  }
+  .grid-row{flex:1; display:flex; gap:6px; min-height:0;}
+  .grid-row img{
+    flex:1; width:100%; height:100%; object-fit:cover; border-radius:2px; min-width:0;
+  }
+  .grid-placeholder{
+    flex:1; display:flex; align-items:center; justify-content:center;
+    color:var(--ink-soft); font-size:13px; text-align:center; padding:20px;
+    border:2px dashed var(--line); border-radius:8px;
+  }
+  .text-panel{
+    flex:1;
+    min-width:0;
+    font-family:Arial, Helvetica, sans-serif;
+    font-size:11.5px;
+    line-height:1.42;
+    color:#111;
+    overflow:hidden;
+    text-transform:uppercase;
+    padding-right:2px;
+  }
+  .text-panel .tp-title{font-weight:700; font-size:1.087em; margin-bottom:10px;}
+  .tp-skill{margin-bottom:10px;}
+  .tp-skill b{font-weight:700;}
+  .tp-context-title{font-weight:700; font-size:1.043em; margin:14px 0 6px;}
+  .tp-context p{margin:0;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Gerador de Registro Pedagógico</h1>
+    <p>Envie de 4 a 14 fotos, edite o texto lateral e baixe a página pronta em PDF ou PowerPoint, no formato do seu modelo.</p>
+  </header>
+
+  <div class="layout">
+    <!-- CONTROLS -->
+    <section class="panel controls">
+      <div class="block upload-block">
+        <h2>Fotos</h2>
+        <div id="dropzone" class="dropzone">
+          Arraste as fotos aqui<br>ou clique para selecionar<br><small>(mínimo 4, máximo 14)</small>
+        </div>
+        <input type="file" id="fileInput" multiple accept="image/*" hidden>
+        <div id="counter" class="counter">0 / 14 fotos</div>
+        <ul id="thumbList" class="thumb-list"></ul>
+      </div>
+
+      <div class="block text-block">
+        <h2>Texto lateral</h2>
+        <label for="titleInput">Título</label>
+        <input type="text" id="titleInput" value="HABILIDADES TRABALHADAS:">
+
+        <label>Habilidades (código + descrição)</label>
+        <div id="skillsList"></div>
+        <button id="addSkillBtn" type="button" class="btn-secondary">+ Adicionar habilidade</button>
+
+        <label for="contextTitleInput">Título da contextualização</label>
+        <input type="text" id="contextTitleInput" value="CONTEXTUALIZAÇÃO:">
+
+        <label for="contextInput">Texto da contextualização</label>
+        <textarea id="contextInput" rows="10" placeholder="Descreva as atividades desenvolvidas, os objetivos e as aprendizagens observadas..."></textarea>
+
+        <label>Alinhamento do texto</label>
+        <div class="align-group" id="alignGroup">
+          <button type="button" class="align-btn" data-align="left" title="Alinhado à esquerda">Esquerda</button>
+          <button type="button" class="align-btn" data-align="center" title="Centralizado">Centro</button>
+          <button type="button" class="align-btn active" data-align="justify" title="Justificado">Justificado</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PREVIEW -->
+    <section class="panel preview-panel">
+      <div class="export-bar">
+        <button id="saveBtn" type="button">💾 Salvar</button>
+        <button id="newBtn" type="button">＋ Criar novo</button>
+        <button id="exportPdfBtn">⬇ Baixar PDF</button>
+        <button id="exportPptxBtn">⬇ Baixar PowerPoint</button>
+        <span id="exportStatus" class="export-status"></span>
+      </div>
+      <div class="preview-wrap">
+        <div id="previewBox" class="preview-box">
+          <div id="photoGrid" class="photo-grid"></div>
+          <div id="textPanel" class="text-panel"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+// ---------- State ----------
+let photos = []; // {id, dataURL, name}
+let skills = [{code:'', desc:''}];
+let nextId = 1;
+let textAlign = 'justify';
+
+const MAX_PHOTOS = 14;
+const MIN_PHOTOS = 4;
+
+// Calcula automaticamente a melhor distribuição de fotos em linhas,
+// mantendo no máximo 4 fotos por linha e no mínimo 2 linhas, com a
+// diferença entre a linha mais cheia e a mais vazia nunca maior que 1.
+// Isso evita que quantidades ímpares deixem uma linha final "faltando"
+// foto: a diferença nunca passa de 1 e as linhas maiores ficam no topo.
+function computeLayout(n){
+  if (n <= 0) return null;
+  const rows = Math.max(2, Math.ceil(n / 4));
+  const base = Math.floor(n / rows);
+  const extra = n % rows; // quantidade de linhas que recebem 1 foto a mais
+  const layout = [];
+  for (let i = 0; i < rows; i++){
+    layout.push(i < extra ? base + 1 : base);
+  }
+  layout.sort((a, b) => b - a); // linhas mais cheias primeiro
+  return layout;
+}
+
+// ---------- Elements ----------
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const counterEl = document.getElementById('counter');
+const thumbList = document.getElementById('thumbList');
+const titleInput = document.getElementById('titleInput');
+const skillsList = document.getElementById('skillsList');
+const addSkillBtn = document.getElementById('addSkillBtn');
+const contextTitleInput = document.getElementById('contextTitleInput');
+const contextInput = document.getElementById('contextInput');
+const photoGrid = document.getElementById('photoGrid');
+const textPanel = document.getElementById('textPanel');
+const exportStatus = document.getElementById('exportStatus');
+const alignGroup = document.getElementById('alignGroup');
+const saveBtn = document.getElementById('saveBtn');
+const newBtn = document.getElementById('newBtn');
+
+// ---------- Upload handling ----------
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', e => { handleFiles(e.target.files); fileInput.value = ''; });
+
+function handleFiles(fileList){
+  const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+  if (photos.length + files.length > MAX_PHOTOS){
+    alert(`Você pode enviar no máximo ${MAX_PHOTOS} fotos. Já há ${photos.length} adicionadas.`);
+  }
+  const room = MAX_PHOTOS - photos.length;
+  files.slice(0, Math.max(room,0)).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      photos.push({id: nextId++, dataURL: e.target.result, name: file.name});
+      renderThumbs();
+      renderPreview();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderThumbs(){
+  thumbList.innerHTML = '';
+  photos.forEach((p, idx) => {
+    const li = document.createElement('li');
+    li.className = 'thumb-item';
+    li.innerHTML = `
+      <img src="${p.dataURL}" alt="">
+      <span class="thumb-name">${idx+1}. ${p.name}</span>
+      <span class="thumb-actions">
+        <button class="icon-btn" data-act="up" data-id="${p.id}" title="Mover para cima">↑</button>
+        <button class="icon-btn" data-act="down" data-id="${p.id}" title="Mover para baixo">↓</button>
+        <button class="icon-btn remove" data-act="remove" data-id="${p.id}" title="Remover">✕</button>
+      </span>`;
+    thumbList.appendChild(li);
+  });
+  updateCounter();
+}
+
+thumbList.addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const id = Number(btn.dataset.id);
+  const idx = photos.findIndex(p => p.id === id);
+  if (idx === -1) return;
+  if (btn.dataset.act === 'remove'){
+    photos.splice(idx, 1);
+  } else if (btn.dataset.act === 'up' && idx > 0){
+    [photos[idx-1], photos[idx]] = [photos[idx], photos[idx-1]];
+  } else if (btn.dataset.act === 'down' && idx < photos.length - 1){
+    [photos[idx+1], photos[idx]] = [photos[idx], photos[idx+1]];
+  }
+  renderThumbs();
+  renderPreview();
+});
+
+function updateCounter(){
+  counterEl.textContent = `${photos.length} / ${MAX_PHOTOS} fotos`;
+  counterEl.classList.toggle('warn', photos.length > 0 && photos.length < MIN_PHOTOS);
+}
+
+// ---------- Skills (habilidades) ----------
+function renderSkills(){
+  skillsList.innerHTML = '';
+  skills.forEach((s, idx) => {
+    const div = document.createElement('div');
+    div.className = 'skill-entry';
+    div.innerHTML = `
+      <div class="skill-row">
+        <input type="text" placeholder="Código (ex: EI02CG01)" value="${escapeAttr(s.code)}" data-idx="${idx}" data-field="code">
+        <textarea placeholder="Descrição da habilidade" data-idx="${idx}" data-field="desc">${s.desc}</textarea>
+        <button class="icon-btn remove" data-idx="${idx}" data-act="removeSkill" title="Remover">✕</button>
+      </div>`;
+    skillsList.appendChild(div);
+  });
+}
+
+skillsList.addEventListener('input', e => {
+  const idx = Number(e.target.dataset.idx);
+  const field = e.target.dataset.field;
+  if (field && !Number.isNaN(idx)){
+    skills[idx][field] = e.target.value;
+    renderTextPanel();
+  }
+});
+
+skillsList.addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act="removeSkill"]');
+  if (!btn) return;
+  const idx = Number(btn.dataset.idx);
+  if (skills.length > 1){
+    skills.splice(idx, 1);
+  } else {
+    skills[0] = {code:'', desc:''};
+  }
+  renderSkills();
+  renderTextPanel();
+});
+
+addSkillBtn.addEventListener('click', () => {
+  if (skills.length >= 8){ alert('Máximo de 8 habilidades para manter o texto legível.'); return; }
+  skills.push({code:'', desc:''});
+  renderSkills();
+  renderTextPanel();
+});
+
+function escapeAttr(str){
+  return (str || '').replace(/"/g, '&quot;');
+}
+function escapeHtml(str){
+  return (str || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+[titleInput, contextTitleInput, contextInput].forEach(el => {
+  el.addEventListener('input', renderTextPanel);
+});
+
+alignGroup.addEventListener('click', e => {
+  const btn = e.target.closest('.align-btn');
+  if (!btn) return;
+  textAlign = btn.dataset.align;
+  alignGroup.querySelectorAll('.align-btn').forEach(b => b.classList.toggle('active', b === btn));
+  renderTextPanel();
+});
+
+// ---------- Preview rendering ----------
+function renderPreview(){
+  photoGrid.innerHTML = '';
+  const n = photos.length;
+  const layout = (n >= MIN_PHOTOS && n <= MAX_PHOTOS) ? computeLayout(n) : null;
+  if (!layout){
+    const msg = n < MIN_PHOTOS
+      ? `Adicione mais ${MIN_PHOTOS - n} foto(s) para montar o layout (mínimo ${MIN_PHOTOS}).`
+      : `Remova ${n - MAX_PHOTOS} foto(s) — o layout aceita até ${MAX_PHOTOS}.`;
+    const ph = document.createElement('div');
+    ph.className = 'grid-placeholder';
+    ph.textContent = msg;
+    photoGrid.appendChild(ph);
+    return;
+  }
+  let cursor = 0;
+  layout.forEach(count => {
+    const row = document.createElement('div');
+    row.className = 'grid-row';
+    for (let i = 0; i < count; i++){
+      const img = document.createElement('img');
+      img.src = photos[cursor].dataURL;
+      row.appendChild(img);
+      cursor++;
+    }
+    photoGrid.appendChild(row);
+  });
+  renderTextPanel();
+}
+
+function renderTextPanel(){
+  let html = `<div class="tp-title">${escapeHtml(titleInput.value)}</div>`;
+  skills.forEach(s => {
+    if (!s.code && !s.desc) return;
+    html += `<div class="tp-skill"><b>CÓDIGO: ${escapeHtml(s.code)}</b> – ${escapeHtml(s.desc)}</div>`;
+  });
+  html += `<div class="tp-context-title">${escapeHtml(contextTitleInput.value)}</div>`;
+  html += `<div class="tp-context"><p>${escapeHtml(contextInput.value).replace(/\n/g,'<br>')}</p></div>`;
+  textPanel.innerHTML = html;
+  textPanel.style.textAlign = textAlign;
+  fitTextPanel();
+}
+
+// Reduz gradualmente o tamanho da fonte do painel de texto até que todo o
+// conteúdo caiba dentro da faixa disponível, sem cortar nem precisar rolar.
+const TEXT_PANEL_MAX_FONT = 11.5;
+const TEXT_PANEL_MIN_FONT = 6.5;
+function fitTextPanel(){
+  let fontSize = TEXT_PANEL_MAX_FONT;
+  textPanel.style.fontSize = fontSize + 'px';
+  while (textPanel.scrollHeight > textPanel.clientHeight && fontSize > TEXT_PANEL_MIN_FONT){
+    fontSize -= 0.3;
+    textPanel.style.fontSize = fontSize.toFixed(1) + 'px';
+  }
+}
+
+// ---------- Export: PDF ----------
+document.getElementById('exportPdfBtn').addEventListener('click', async () => {
+  if (!validateForExport()) return;
+  if (typeof window.html2canvas === 'undefined' || typeof window.jspdf === 'undefined'){
+    setStatus('As bibliotecas de PDF ainda não carregaram. Verifique a internet e tente de novo em instantes.');
+    return;
+  }
+  setStatus('Gerando PDF...');
+  try{
+    const canvas = await html2canvas(previewBox, {scale: 2.2, backgroundColor:'#ffffff', useCORS:true});
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const { jsPDF } = window.jspdf;
+    const pdfW = 13.333, pdfH = 7.5;
+    const doc = new jsPDF({orientation:'landscape', unit:'in', format:[pdfW, pdfH]});
+    doc.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
+    doc.save('registro_pedagogico.pdf');
+    setStatus('PDF baixado ✓');
+  } catch(err){
+    console.error(err);
+    setStatus('Erro ao gerar o PDF.');
+  }
+});
+
+// ---------- Export: PPTX ----------
+document.getElementById('exportPptxBtn').addEventListener('click', async () => {
+  if (!validateForExport()) return;
+  if (typeof window.PptxGenJS === 'undefined'){
+    setStatus('A biblioteca de PowerPoint ainda não carregou. Verifique a internet e tente de novo em instantes.');
+    return;
+  }
+  setStatus('Gerando PowerPoint...');
+  try{
+    const pptx = new PptxGenJS();
+    pptx.defineLayout({ name: 'CUSTOM_WIDE', width: 13.333, height: 7.5 });
+    pptx.layout = 'CUSTOM_WIDE';
+
+    const slide = pptx.addSlide();
+
+    // Outer border
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 0.15, y: 0.15, w: 13.033, h: 7.2,
+      fill: { color: 'FFFFFF' },
+      line: { color: '111111', width: 2.25 }
+    });
+
+    // Photo grid area
+    const gx = 0.35, gy = 0.35, gw = 9.35, gh = 6.8, gap = 0.06;
+    const n = photos.length;
+    const layout = computeLayout(n);
+    const rowH = gh / layout.length;
+    let cursor = 0;
+    layout.forEach((count, rowIdx) => {
+      const colW = gw / count;
+      for (let c = 0; c < count; c++){
+        const photo = photos[cursor];
+        slide.addImage({
+          data: photo.dataURL,
+          x: gx + c * colW + gap/2,
+          y: gy + rowIdx * rowH + gap/2,
+          w: colW - gap,
+          h: rowH - gap,
+          sizing: { type: 'cover', w: colW - gap, h: rowH - gap }
+        });
+        cursor++;
+      }
+    });
+
+    // Text panel
+    const tx = 9.9, ty = 0.35, tw = 3.1, th = 6.8;
+    const runs = [];
+    runs.push({ text: titleInput.value.toUpperCase() + '\n\n', options: { bold:true, fontSize:13, color:'1F2A24', fontFace:'Arial' } });
+    skills.forEach(s => {
+      if (!s.code && !s.desc) return;
+      runs.push({ text: `CÓDIGO: ${s.code.toUpperCase()} – `, options: { bold:true, fontSize:10.5, fontFace:'Arial' } });
+      runs.push({ text: s.desc.toUpperCase() + '\n\n', options: { fontSize:10.5, fontFace:'Arial' } });
+    });
+    runs.push({ text: contextTitleInput.value.toUpperCase() + '\n', options: { bold:true, fontSize:11.5, fontFace:'Arial' } });
+    runs.push({ text: contextInput.value.toUpperCase(), options: { fontSize:10.5, fontFace:'Arial' } });
+
+    slide.addText(runs, {
+      x: tx, y: ty, w: tw, h: th,
+      valign: 'top', align: textAlign,
+      fit: 'shrink',
+      lineSpacingMultiple: 1.15
+    });
+
+    await pptx.writeFile({ fileName: 'registro_pedagogico.pptx' });
+    setStatus('PowerPoint baixado ✓');
+  } catch(err){
+    console.error(err);
+    setStatus('Erro ao gerar o PowerPoint.');
+  }
+});
+
+function validateForExport(){
+  if (photos.length < MIN_PHOTOS || photos.length > MAX_PHOTOS){
+    alert(`Adicione entre ${MIN_PHOTOS} e ${MAX_PHOTOS} fotos antes de exportar.`);
+    return false;
+  }
+  return true;
+}
+
+function setStatus(msg){
+  exportStatus.textContent = msg;
+  if (msg.includes('✓')) setTimeout(() => { exportStatus.textContent = ''; }, 3500);
+}
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(fitTextPanel, 120);
+});
+
+// ---------- Salvar / Carregar rascunho ----------
+const DRAFT_KEY = 'registro-pedagogico-draft';
+
+// Dentro do Claude, usamos o armazenamento persistente do artefato
+// (window.storage). Se o arquivo for aberto direto no navegador (ex.:
+// clicando duas vezes no arquivo baixado), esse recurso não existe — nesse
+// caso caímos automaticamente para o localStorage do próprio navegador.
+const hasArtifactStorage = (typeof window.storage !== 'undefined' && window.storage && typeof window.storage.set === 'function');
+
+async function storageSet(key, value){
+  if (hasArtifactStorage) return window.storage.set(key, value, false);
+  localStorage.setItem(key, value);
+  return {key, value};
+}
+
+async function storageGet(key){
+  if (hasArtifactStorage) return window.storage.get(key, false);
+  const value = localStorage.getItem(key);
+  return value !== null ? {key, value} : null;
+}
+
+function currentDraft(){
+  return {
+    title: titleInput.value,
+    skills,
+    contextTitle: contextTitleInput.value,
+    context: contextInput.value,
+    textAlign,
+    photos
+  };
+}
+
+async function saveDraft(){
+  setStatus('Salvando...');
+  try{
+    const result = await storageSet(DRAFT_KEY, JSON.stringify(currentDraft()));
+    setStatus(result ? 'Rascunho salvo ✓' : 'Não foi possível salvar.');
+  } catch(err){
+    console.error(err);
+    setStatus('Erro ao salvar (as fotos podem ser grandes demais para o armazenamento).');
+  }
+}
+
+async function loadDraft(){
+  try{
+    const result = await storageGet(DRAFT_KEY);
+    if (!result || !result.value) return;
+    const draft = JSON.parse(result.value);
+    applyDraft(draft);
+  } catch(err){
+    // Nenhum rascunho salvo ainda, ou erro ao ler — segue com o estado em branco.
+  }
+}
+
+function applyDraft(draft){
+  titleInput.value = draft.title || 'HABILIDADES TRABALHADAS:';
+  skills = (draft.skills && draft.skills.length) ? draft.skills : [{code:'', desc:''}];
+  contextTitleInput.value = draft.contextTitle || 'CONTEXTUALIZAÇÃO:';
+  contextInput.value = draft.context || '';
+  textAlign = draft.textAlign || 'justify';
+  photos = draft.photos || [];
+  nextId = photos.reduce((max, p) => Math.max(max, p.id), 0) + 1;
+  alignGroup.querySelectorAll('.align-btn').forEach(b => b.classList.toggle('active', b.dataset.align === textAlign));
+  renderSkills();
+  renderThumbs();
+  updateCounter();
+  renderPreview();
+}
+
+function hasUnsavedContent(){
+  return photos.length > 0
+    || titleInput.value !== 'HABILIDADES TRABALHADAS:'
+    || contextTitleInput.value !== 'CONTEXTUALIZAÇÃO:'
+    || contextInput.value.trim() !== ''
+    || skills.some(s => s.code || s.desc);
+}
+
+function createNew(){
+  if (hasUnsavedContent() && !confirm('Deseja criar um novo registro? As alterações não salvas serão perdidas.')){
+    return;
+  }
+  applyDraft({});
+  setStatus('Novo registro criado ✓');
+}
+
+saveBtn.addEventListener('click', saveDraft);
+newBtn.addEventListener('click', createNew);
+
+// ---------- Init ----------
+renderSkills();
+renderTextPanel();
+renderPreview();
+loadDraft();
+</script>
+</body>
+</html>
