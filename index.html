@@ -134,6 +134,22 @@
   #newBtn{background:#fff; color:var(--ink-soft); border:1px solid var(--line);}
   #newBtn:hover{background:#F3F1EE; color:var(--ink);}
   .export-status{font-size:12.5px; color:var(--ink-soft);}
+  #printBtn{background:#EEF3F1; color:var(--teal-900); border:1px solid var(--teal-900);}
+  #printBtn:hover{background:var(--teal-900); color:#fff;}
+
+  /* ---- Impressão: mostra apenas a página do registro ---- */
+  @media print{
+    @page{ size: landscape; margin:0; }
+    body *{ visibility:hidden; }
+    #previewBox, #previewBox *{ visibility:visible; }
+    #previewBox{
+      position:fixed; top:0; left:0;
+      width:100vw; height:100vh;
+      aspect-ratio:auto;
+      margin:0; border-width:3px;
+      box-shadow:none;
+    }
+  }
 
   /* ---- Preview / document look ---- */
   .preview-wrap{overflow:auto;}
@@ -232,6 +248,7 @@
         <button id="newBtn" type="button">＋ Criar novo</button>
         <button id="exportPdfBtn">⬇ Baixar PDF</button>
         <button id="exportPptxBtn">⬇ Baixar PowerPoint</button>
+        <button id="printBtn" type="button">🖨 Imprimir</button>
         <span id="exportStatus" class="export-status"></span>
       </div>
       <div class="preview-wrap">
@@ -562,6 +579,12 @@ document.getElementById('exportPptxBtn').addEventListener('click', async () => {
     console.error(err);
     setStatus('Erro ao gerar o PowerPoint.');
   }
+});
+
+// ---------- Imprimir ----------
+document.getElementById('printBtn').addEventListener('click', () => {
+  if (!validateForExport()) return;
+  window.print();
 });
 
 function validateForExport(){
