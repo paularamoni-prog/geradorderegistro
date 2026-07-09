@@ -9,25 +9,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
-<script>
-  // Se alguma das bibliotecas acima não carregar (CDN bloqueado, sem
-  // internet no momento, etc.), tenta novamente por um CDN alternativo
-  // antes de desistir — assim o app funciona mesmo se um provedor falhar.
-  function ensureLib(checkFn, fallbackUrl){
-    window.addEventListener('load', () => {
-      setTimeout(() => {
-        if (!checkFn()){
-          const s = document.createElement('script');
-          s.src = fallbackUrl;
-          document.head.appendChild(s);
-        }
-      }, 800);
-    });
-  }
-  ensureLib(() => typeof window.html2canvas !== 'undefined', 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
-  ensureLib(() => typeof window.jspdf !== 'undefined', 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
-  ensureLib(() => typeof window.PptxGenJS !== 'undefined', 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js');
-</script>
 <style>
   :root{
     --teal-900:#1F3D3A;
@@ -500,10 +481,6 @@ function fitTextPanel(){
 // ---------- Export: PDF ----------
 document.getElementById('exportPdfBtn').addEventListener('click', async () => {
   if (!validateForExport()) return;
-  if (typeof window.html2canvas === 'undefined' || typeof window.jspdf === 'undefined'){
-    setStatus('As bibliotecas de PDF ainda não carregaram. Verifique a internet e tente de novo em instantes.');
-    return;
-  }
   setStatus('Gerando PDF...');
   try{
     const canvas = await html2canvas(previewBox, {scale: 2.2, backgroundColor:'#ffffff', useCORS:true});
@@ -523,10 +500,6 @@ document.getElementById('exportPdfBtn').addEventListener('click', async () => {
 // ---------- Export: PPTX ----------
 document.getElementById('exportPptxBtn').addEventListener('click', async () => {
   if (!validateForExport()) return;
-  if (typeof window.PptxGenJS === 'undefined'){
-    setStatus('A biblioteca de PowerPoint ainda não carregou. Verifique a internet e tente de novo em instantes.');
-    return;
-  }
   setStatus('Gerando PowerPoint...');
   try{
     const pptx = new PptxGenJS();
@@ -613,24 +586,6 @@ window.addEventListener('resize', () => {
 // ---------- Salvar / Carregar rascunho ----------
 const DRAFT_KEY = 'registro-pedagogico-draft';
 
-// Dentro do Claude, usamos o armazenamento persistente do artefato
-// (window.storage). Se o arquivo for aberto direto no navegador (ex.:
-// clicando duas vezes no arquivo baixado), esse recurso não existe — nesse
-// caso caímos automaticamente para o localStorage do próprio navegador.
-const hasArtifactStorage = (typeof window.storage !== 'undefined' && window.storage && typeof window.storage.set === 'function');
-
-async function storageSet(key, value){
-  if (hasArtifactStorage) return window.storage.set(key, value, false);
-  localStorage.setItem(key, value);
-  return {key, value};
-}
-
-async function storageGet(key){
-  if (hasArtifactStorage) return window.storage.get(key, false);
-  const value = localStorage.getItem(key);
-  return value !== null ? {key, value} : null;
-}
-
 function currentDraft(){
   return {
     title: titleInput.value,
@@ -645,7 +600,7 @@ function currentDraft(){
 async function saveDraft(){
   setStatus('Salvando...');
   try{
-    const result = await storageSet(DRAFT_KEY, JSON.stringify(currentDraft()));
+    const result = await window.storage.set(DRAFT_KEY, JSON.stringify(currentDraft()), false);
     setStatus(result ? 'Rascunho salvo ✓' : 'Não foi possível salvar.');
   } catch(err){
     console.error(err);
@@ -655,7 +610,7 @@ async function saveDraft(){
 
 async function loadDraft(){
   try{
-    const result = await storageGet(DRAFT_KEY);
+    const result = await window.storage.get(DRAFT_KEY, false);
     if (!result || !result.value) return;
     const draft = JSON.parse(result.value);
     applyDraft(draft);
