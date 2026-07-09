@@ -506,14 +506,15 @@ document.getElementById('exportPdfBtn').addEventListener('click', async () => {
     setStatus('As bibliotecas de PDF ainda não carregaram. Verifique a internet e tente de novo em instantes.');
     return;
   }
-  setStatus('Gerando PDF...');
+  setStatus('Gerando PDF em alta resolução...');
   try{
-    // Sempre captura em alta resolução (~2800px de largura), independente
-    // do tamanho da janela do navegador no momento — assim a nitidez das
-    // fotos não depende de quão grande a tela está no momento da exportação.
-    const TARGET_WIDTH_PX = 2800;
+    // Sempre captura em altíssima resolução (~4000px de largura, perto de
+    // 300 DPI numa página de 13.33"), independente do tamanho da janela do
+    // navegador no momento — assim a nitidez das fotos não depende de quão
+    // grande a tela está no momento da exportação.
+    const TARGET_WIDTH_PX = 4000;
     const rect = previewBox.getBoundingClientRect();
-    const dynamicScale = Math.min(Math.max(TARGET_WIDTH_PX / rect.width, 1.5), 6);
+    const dynamicScale = Math.min(Math.max(TARGET_WIDTH_PX / rect.width, 1.5), 8);
     const canvas = await html2canvas(previewBox, {scale: dynamicScale, backgroundColor:'#ffffff', useCORS:true});
     const imgData = canvas.toDataURL('image/jpeg', 0.98);
     const { jsPDF } = window.jspdf;
