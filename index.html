@@ -508,8 +508,14 @@ document.getElementById('exportPdfBtn').addEventListener('click', async () => {
   }
   setStatus('Gerando PDF...');
   try{
-    const canvas = await html2canvas(previewBox, {scale: 2.2, backgroundColor:'#ffffff', useCORS:true});
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    // Sempre captura em alta resolução (~2800px de largura), independente
+    // do tamanho da janela do navegador no momento — assim a nitidez das
+    // fotos não depende de quão grande a tela está no momento da exportação.
+    const TARGET_WIDTH_PX = 2800;
+    const rect = previewBox.getBoundingClientRect();
+    const dynamicScale = Math.min(Math.max(TARGET_WIDTH_PX / rect.width, 1.5), 6);
+    const canvas = await html2canvas(previewBox, {scale: dynamicScale, backgroundColor:'#ffffff', useCORS:true});
+    const imgData = canvas.toDataURL('image/jpeg', 0.98);
     const { jsPDF } = window.jspdf;
     const pdfW = 13.333, pdfH = 7.5;
     const doc = new jsPDF({orientation:'landscape', unit:'in', format:[pdfW, pdfH]});
