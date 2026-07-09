@@ -137,15 +137,18 @@
   #printBtn{background:#EEF3F1; color:var(--teal-900); border:1px solid var(--teal-900);}
   #printBtn:hover{background:var(--teal-900); color:#fff;}
 
-  /* ---- Impressão: mostra apenas a página do registro ---- */
+  /* ---- Impressão: mostra apenas a página do registro ----
+     O tamanho de página é definido igual à proporção do layout (16:9),
+     para que a barra de texto e as fotos mantenham a mesma proporção
+     de tela e ocupem o máximo possível da folha, sem distorcer. */
   @media print{
-    @page{ size: landscape; margin:0; }
+    @page{ size: 13.333in 7.5in; margin:0; }
     body *{ visibility:hidden; }
     #previewBox, #previewBox *{ visibility:visible; }
     #previewBox{
       position:fixed; top:0; left:0;
-      width:100vw; height:100vh;
-      aspect-ratio:auto;
+      width:100%; height:auto;
+      aspect-ratio:16/9;
       margin:0; border-width:3px;
       box-shadow:none;
     }
@@ -238,6 +241,16 @@
           <button type="button" class="align-btn" data-align="center" title="Centralizado">Centro</button>
           <button type="button" class="align-btn active" data-align="justify" title="Justificado">Justificado</button>
         </div>
+
+        <label style="display:flex; align-items:center; gap:6px; margin-top:16px;">
+          <input type="checkbox" id="autoFitCheckbox" checked style="width:auto; margin:0;">
+          Ajustar tamanho da fonte automaticamente
+        </label>
+        <label for="fontSizeRange">Tamanho da fonte do texto lateral</label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="range" id="fontSizeRange" min="6.5" max="16" step="0.5" value="11.5" disabled style="flex:1;">
+          <span id="fontSizeValue" style="font-size:12px; color:var(--ink-soft); width:42px; text-align:right; flex-shrink:0;">11.5px</span>
+        </div>
       </div>
     </section>
 
@@ -246,6 +259,10 @@
       <div class="export-bar">
         <button id="saveBtn" type="button">💾 Salvar</button>
         <button id="newBtn" type="button">＋ Criar novo</button>
+        <select id="pdfFormatSelect" title="Formato da página do PDF" style="padding:9px 10px; border-radius:8px; border:1px solid var(--line); font-size:13px; font-weight:600; color:var(--ink-soft);">
+          <option value="slide">Formato Slide (16:9)</option>
+          <option value="a4">Formato A4</option>
+        </select>
         <button id="exportPdfBtn">⬇ Baixar PDF</button>
         <button id="exportPptxBtn">⬇ Baixar PowerPoint</button>
         <button id="printBtn" type="button">🖨 Imprimir</button>
@@ -305,6 +322,10 @@ const exportStatus = document.getElementById('exportStatus');
 const alignGroup = document.getElementById('alignGroup');
 const saveBtn = document.getElementById('saveBtn');
 const newBtn = document.getElementById('newBtn');
+const autoFitCheckbox = document.getElementById('autoFitCheckbox');
+const fontSizeRange = document.getElementById('fontSizeRange');
+const fontSizeValue = document.getElementById('fontSizeValue');
+const pdfFormatSelect = document.getElementById('pdfFormatSelect');
 
 // ---------- Upload handling ----------
 dropzone.addEventListener('click', () => fileInput.click());
@@ -484,16 +505,42 @@ function renderTextPanel(){
 
 // Reduz gradualmente o tamanho da fonte do painel de texto até que todo o
 // conteúdo caiba dentro da faixa disponível, sem cortar nem precisar rolar.
+// Se o usuário desativar o ajuste automático, o tamanho escolhido manualmente
+// no controle deslizante é usado em vez do cálculo automático.
 const TEXT_PANEL_MAX_FONT = 11.5;
 const TEXT_PANEL_MIN_FONT = 6.5;
+let manualFontSize = null; // null = ajuste automático ativo
+
 function fitTextPanel(){
+  if (manualFontSize !== null){
+    textPanel.style.fontSize = manualFontSize.toFixed(1) + 'px';
+    return;
+  }
   let fontSize = TEXT_PANEL_MAX_FONT;
   textPanel.style.fontSize = fontSize + 'px';
   while (textPanel.scrollHeight > textPanel.clientHeight && fontSize > TEXT_PANEL_MIN_FONT){
     fontSize -= 0.3;
     textPanel.style.fontSize = fontSize.toFixed(1) + 'px';
   }
+  fontSizeRange.value = fontSize.toFixed(1);
+  fontSizeValue.textContent = fontSize.toFixed(1) + 'px';
 }
+
+autoFitCheckbox.addEventListener('change', () => {
+  fontSizeRange.disabled = autoFitCheckbox.checked;
+  manualFontSize = autoFitCheckbox.checked ? null : parseFloat(fontSizeRange.value);
+  fitTextPanel();
+});
+
+fontSizeRange.addEventListener('input', () => {
+  manualFontSize = parseFloat(fontSizeRange.value);
+  fontSizeValue.textContent = manualFontSize.toFixed(1) + 'px';
+  fitTextPanel();
+});
+
+// Garante que o texto seja reajustado ao tamanho correto logo antes de imprimir,
+// já que a folha impressa agora usa a mesma proporção 16:9 da tela.
+window.addEventListener('beforeprint', fitTextPanel);
 
 // ---------- Export: PDF ----------
 document.getElementById('exportPdfBtn').addEventListener('click', async () => {
@@ -503,9 +550,31 @@ document.getElementById('exportPdfBtn').addEventListener('click', async () => {
     const canvas = await html2canvas(previewBox, {scale: 2.2, backgroundColor:'#ffffff', useCORS:true});
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const { jsPDF } = window.jspdf;
-    const pdfW = 13.333, pdfH = 7.5;
-    const doc = new jsPDF({orientation:'landscape', unit:'in', format:[pdfW, pdfH]});
-    doc.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
+    let doc;
+    if (pdfFormatSelect.value === 'a4'){
+      // Página A4 (paisagem): a imagem mantém a proporção 16:9 e é centralizada
+      // na folha, com uma pequena margem, sem distorcer o layout.
+      doc = new jsPDF({orientation:'landscape', unit:'in', format:'a4'});
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 0.4;
+      const availW = pageW - margin * 2;
+      const availH = pageH - margin * 2;
+      const ratio = 16 / 9;
+      let drawW = availW;
+      let drawH = drawW / ratio;
+      if (drawH > availH){
+        drawH = availH;
+        drawW = drawH * ratio;
+      }
+      const x = (pageW - drawW) / 2;
+      const y = (pageH - drawH) / 2;
+      doc.addImage(imgData, 'JPEG', x, y, drawW, drawH);
+    } else {
+      const pdfW = 13.333, pdfH = 7.5;
+      doc = new jsPDF({orientation:'landscape', unit:'in', format:[pdfW, pdfH]});
+      doc.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
+    }
     doc.save('registro_pedagogico.pdf');
     setStatus('PDF baixado ✓');
   } catch(err){
@@ -555,16 +624,21 @@ document.getElementById('exportPptxBtn').addEventListener('click', async () => {
     });
 
     // Text panel
+    // Escala as fontes do PowerPoint na mesma proporção do tamanho de fonte
+    // atual do painel de texto (automático ou definido manualmente), para
+    // que o resultado exportado acompanhe o que é visto na prévia.
+    const currentPanelFont = parseFloat(textPanel.style.fontSize) || TEXT_PANEL_MAX_FONT;
+    const fontScale = currentPanelFont / TEXT_PANEL_MAX_FONT;
     const tx = 9.9, ty = 0.35, tw = 3.1, th = 6.8;
     const runs = [];
-    runs.push({ text: titleInput.value.toUpperCase() + '\n\n', options: { bold:true, fontSize:13, color:'1F2A24', fontFace:'Arial' } });
+    runs.push({ text: titleInput.value.toUpperCase() + '\n\n', options: { bold:true, fontSize:13 * fontScale, color:'1F2A24', fontFace:'Arial' } });
     skills.forEach(s => {
       if (!s.code && !s.desc) return;
-      runs.push({ text: `CÓDIGO: ${s.code.toUpperCase()} – `, options: { bold:true, fontSize:10.5, fontFace:'Arial' } });
-      runs.push({ text: s.desc.toUpperCase() + '\n\n', options: { fontSize:10.5, fontFace:'Arial' } });
+      runs.push({ text: `CÓDIGO: ${s.code.toUpperCase()} – `, options: { bold:true, fontSize:10.5 * fontScale, fontFace:'Arial' } });
+      runs.push({ text: s.desc.toUpperCase() + '\n\n', options: { fontSize:10.5 * fontScale, fontFace:'Arial' } });
     });
-    runs.push({ text: contextTitleInput.value.toUpperCase() + '\n', options: { bold:true, fontSize:11.5, fontFace:'Arial' } });
-    runs.push({ text: contextInput.value.toUpperCase(), options: { fontSize:10.5, fontFace:'Arial' } });
+    runs.push({ text: contextTitleInput.value.toUpperCase() + '\n', options: { bold:true, fontSize:11.5 * fontScale, fontFace:'Arial' } });
+    runs.push({ text: contextInput.value.toUpperCase(), options: { fontSize:10.5 * fontScale, fontFace:'Arial' } });
 
     slide.addText(runs, {
       x: tx, y: ty, w: tw, h: th,
@@ -616,6 +690,7 @@ function currentDraft(){
     contextTitle: contextTitleInput.value,
     context: contextInput.value,
     textAlign,
+    manualFontSize,
     photos
   };
 }
@@ -648,6 +723,13 @@ function applyDraft(draft){
   contextTitleInput.value = draft.contextTitle || 'CONTEXTUALIZAÇÃO:';
   contextInput.value = draft.context || '';
   textAlign = draft.textAlign || 'justify';
+  manualFontSize = (typeof draft.manualFontSize === 'number') ? draft.manualFontSize : null;
+  autoFitCheckbox.checked = (manualFontSize === null);
+  fontSizeRange.disabled = autoFitCheckbox.checked;
+  if (manualFontSize !== null){
+    fontSizeRange.value = manualFontSize;
+    fontSizeValue.textContent = manualFontSize.toFixed(1) + 'px';
+  }
   photos = draft.photos || [];
   nextId = photos.reduce((max, p) => Math.max(max, p.id), 0) + 1;
   alignGroup.querySelectorAll('.align-btn').forEach(b => b.classList.toggle('active', b.dataset.align === textAlign));
