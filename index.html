@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
 <style>
   :root{
     --teal-900:#1F3D3A;
@@ -134,6 +135,45 @@
   #newBtn{background:#fff; color:var(--ink-soft); border:1px solid var(--line);}
   #newBtn:hover{background:#F3F1EE; color:var(--ink);}
   .export-status{font-size:12.5px; color:var(--ink-soft);}
+  #exportDocxBtn{background:#2B579A; color:#fff;}
+  #exportDocxBtn:hover{background:#1E3F73;}
+  .font-group{display:flex; align-items:center; gap:4px; border:1px solid var(--line); border-radius:8px; padding:3px 6px; background:#fff;}
+  .font-group .fg-label{font-size:12px; font-weight:600; color:var(--ink-soft); margin-right:2px;}
+  .font-group button{padding:6px 10px; background:#EEF3F1; color:var(--teal-900); border:1px solid var(--teal-500); border-radius:6px; font-weight:700; font-size:14px; line-height:1;}
+  .font-group button:hover{background:var(--teal-500); color:#fff;}
+  .font-group .fg-value{font-size:12px; color:var(--ink-soft); min-width:44px; text-align:center;}
+  .font-warn{font-size:12px; color:var(--danger); font-weight:600; display:none;}
+  .font-warn.show{display:block;}
+  #openBtn{background:#EEF3F1; color:var(--teal-700); border:1px solid var(--teal-500);}
+  #openBtn:hover{background:var(--teal-500); color:#fff;}
+  .current-name{font-size:12.5px; font-weight:600; color:var(--teal-700); background:#EEF6F3; border:1px solid var(--line); border-radius:999px; padding:5px 12px; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .current-name.empty{color:var(--ink-soft); background:#F6F6F4; font-weight:500;}
+  .modal-overlay{position:fixed; inset:0; background:rgba(20,30,26,.55); display:none; align-items:center; justify-content:center; z-index:1000; padding:20px;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:#fff; border-radius:12px; width:100%; max-width:560px; max-height:86vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.3);}
+  .modal-head{padding:18px 22px 10px; border-bottom:1px solid var(--line);}
+  .modal-head h3{margin:0; font-family:'Poppins',sans-serif; font-size:17px; color:var(--teal-900);}
+  .modal-head p{margin:4px 0 0; font-size:12.5px; color:var(--ink-soft);}
+  .modal-body{padding:16px 22px; overflow-y:auto;}
+  .modal-foot{padding:12px 22px 18px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid var(--line);}
+  .modal-foot button, .rec-actions button{padding:9px 16px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink-soft); font-weight:600; font-size:13px; cursor:pointer;}
+  .modal-foot button.primary{background:var(--teal-700); border-color:var(--teal-700); color:#fff;}
+  .modal-foot button.primary:hover{background:var(--teal-900);}
+  .modal-body input[type=text]{margin-top:0;}
+  .rec-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px;}
+  .rec-item{display:flex; align-items:center; gap:12px; border:1px solid var(--line); border-radius:8px; padding:10px 12px;}
+  .rec-item.is-current{border-color:var(--teal-500); background:#F1F7F5;}
+  .rec-info{flex:1; min-width:0;}
+  .rec-name{font-weight:600; font-size:14px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .rec-meta{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+  .rec-actions{display:flex; gap:6px; flex-shrink:0;}
+  .rec-actions button{padding:6px 12px;}
+  .rec-actions .open{background:var(--teal-700); border-color:var(--teal-700); color:#fff;}
+  .rec-actions .open:hover{background:var(--teal-900);}
+  .rec-actions .del{color:var(--danger); border-color:#E9C4BF;}
+  .rec-actions .del:hover{background:var(--danger); color:#fff;}
+  .rec-empty{text-align:center; color:var(--ink-soft); font-size:13.5px; padding:22px 8px;}
+  .rec-usage{font-size:12px; color:var(--ink-soft); margin-top:14px;}
   #printBtn{background:#EEF3F1; color:var(--teal-900); border:1px solid var(--teal-900);}
   #printBtn:hover{background:var(--teal-900); color:#fff;}
 
@@ -204,7 +244,7 @@
 <div class="app">
   <header>
     <h1>Gerador de Registro Pedagógico</h1>
-    <p>Envie de 4 a 14 fotos, edite o texto lateral e baixe a página pronta em PDF ou PowerPoint, no formato do seu modelo.</p>
+    <p>Envie de 4 a 14 fotos, edite o texto lateral e baixe a página pronta em PDF, PowerPoint ou Word, no formato do seu modelo.</p>
   </header>
 
   <div class="layout">
@@ -248,7 +288,7 @@
         </label>
         <label for="fontSizeRange">Tamanho da fonte do texto lateral</label>
         <div style="display:flex; align-items:center; gap:8px;">
-          <input type="range" id="fontSizeRange" min="6.5" max="16" step="0.5" value="11.5" disabled style="flex:1;">
+          <input type="range" id="fontSizeRange" min="5" max="24" step="0.5" value="11.5" disabled style="flex:1;">
           <span id="fontSizeValue" style="font-size:12px; color:var(--ink-soft); width:42px; text-align:right; flex-shrink:0;">11.5px</span>
         </div>
       </div>
@@ -258,16 +298,26 @@
     <section class="panel preview-panel">
       <div class="export-bar">
         <button id="saveBtn" type="button">💾 Salvar</button>
+        <button id="openBtn" type="button">📂 Abrir</button>
         <button id="newBtn" type="button">＋ Criar novo</button>
+        <span id="currentName" class="current-name empty" title="Registro aberto">Sem nome (não salvo)</span>
         <select id="pdfFormatSelect" title="Formato da página do PDF" style="padding:9px 10px; border-radius:8px; border:1px solid var(--line); font-size:13px; font-weight:600; color:var(--ink-soft);">
           <option value="slide">Formato Slide (16:9)</option>
           <option value="a4">Formato A4</option>
         </select>
         <button id="exportPdfBtn">⬇ Baixar PDF</button>
         <button id="exportPptxBtn">⬇ Baixar PowerPoint</button>
+        <button id="exportDocxBtn" type="button">⬇ Baixar Word</button>
+        <div class="font-group" title="Tamanho da fonte do texto lateral">
+          <span class="fg-label">Fonte</span>
+          <button id="fontMinusBtn" type="button" title="Diminuir fonte">A−</button>
+          <span id="fontBarValue" class="fg-value">11.5px</span>
+          <button id="fontPlusBtn" type="button" title="Aumentar fonte">A+</button>
+        </div>
         <button id="printBtn" type="button">🖨 Imprimir</button>
         <span id="exportStatus" class="export-status"></span>
       </div>
+      <div id="fontWarn" class="font-warn">⚠ O texto está maior que o espaço disponível e será cortado. Diminua a fonte (A−) ou reduza o texto.</div>
       <div class="preview-wrap">
         <div id="previewBox" class="preview-box">
           <div id="photoGrid" class="photo-grid"></div>
@@ -278,7 +328,62 @@
   </div>
 </div>
 
+<div id="modalOverlay" class="modal-overlay" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" id="modalBox"></div>
+</div>
+
 <script>
+// ---------- Carregamento das bibliotecas (com servidores reserva) ----------
+const LIB_SOURCES = {
+  html2canvas: { check: () => window.html2canvas, urls: [
+    'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+    'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+    'https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js'] },
+  jspdf: { check: () => window.jspdf && window.jspdf.jsPDF, urls: [
+    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+    'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+    'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js'] },
+  pptxgen: { check: () => window.PptxGenJS, urls: [
+    'https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js',
+    'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js',
+    'https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgen.bundle.js'] },
+  docx: { check: () => window.docx, urls: [
+    'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js',
+    'https://unpkg.com/docx@8.5.0/build/index.umd.js'] }
+};
+
+function injectScript(url){
+  return new Promise((resolve, reject) => {
+    const el = document.createElement('script');
+    el.src = url;
+    el.onload = () => resolve();
+    el.onerror = () => { el.remove(); reject(new Error('falha ao carregar ' + url)); };
+    document.head.appendChild(el);
+  });
+}
+
+// Garante que as bibliotecas existam; se alguma não carregou, tenta os servidores reserva.
+async function ensureLibs(names){
+  for (const name of names){
+    const lib = LIB_SOURCES[name];
+    if (lib.check()) continue;
+    for (const url of lib.urls){
+      try { await injectScript(url); } catch(e) { continue; }
+      if (lib.check()) break;
+    }
+    if (!lib.check()){
+      throw new Error('Não foi possível carregar a biblioteca "' + name + '". Verifique sua conexão com a internet (ou bloqueadores/antivírus) e recarregue a página.');
+    }
+  }
+}
+
+function showError(prefix, err){
+  console.error(err);
+  const msg = (err && err.message) ? err.message : String(err);
+  setStatus(prefix + ' ' + msg);
+  alert(prefix + '\n\n' + msg);
+}
+
 // ---------- State ----------
 let photos = []; // {id, dataURL, name}
 let skills = [{code:'', desc:''}];
@@ -326,6 +431,10 @@ const autoFitCheckbox = document.getElementById('autoFitCheckbox');
 const fontSizeRange = document.getElementById('fontSizeRange');
 const fontSizeValue = document.getElementById('fontSizeValue');
 const pdfFormatSelect = document.getElementById('pdfFormatSelect');
+const fontMinusBtn = document.getElementById('fontMinusBtn');
+const fontPlusBtn = document.getElementById('fontPlusBtn');
+const fontBarValue = document.getElementById('fontBarValue');
+const fontWarn = document.getElementById('fontWarn');
 
 // ---------- Upload handling ----------
 dropzone.addEventListener('click', () => fileInput.click());
@@ -338,21 +447,64 @@ dropzone.addEventListener('drop', e => {
 });
 fileInput.addEventListener('change', e => { handleFiles(e.target.files); fileInput.value = ''; });
 
-function handleFiles(fileList){
+function loadImage(src){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+// Reduz e recomprime a imagem (JPEG). Mantém a qualidade boa para impressão,
+// mas evita estourar o limite de ~5 MB do localStorage.
+async function recompressDataURL(dataURL, maxDim, quality){
+  const img = await loadImage(dataURL);
+  const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.max(1, Math.round(img.naturalWidth * scale));
+  const h = Math.max(1, Math.round(img.naturalHeight * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(img, 0, 0, w, h);
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
+function readFileAsDataURL(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleFiles(fileList){
   const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
   if (photos.length + files.length > MAX_PHOTOS){
     alert(`Você pode enviar no máximo ${MAX_PHOTOS} fotos. Já há ${photos.length} adicionadas.`);
   }
   const room = MAX_PHOTOS - photos.length;
-  files.slice(0, Math.max(room,0)).forEach(file => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      photos.push({id: nextId++, dataURL: e.target.result, name: file.name});
-      renderThumbs();
-      renderPreview();
-    };
-    reader.readAsDataURL(file);
-  });
+  const chosen = files.slice(0, Math.max(room, 0));
+  if (!chosen.length) return;
+  setStatus('Processando fotos...');
+  try{
+    // Promise.all mantém a ordem em que as fotos foram selecionadas
+    const loaded = await Promise.all(chosen.map(async file => {
+      const raw = await readFileAsDataURL(file);
+      const small = await recompressDataURL(raw, 1600, 0.86);
+      return { dataURL: small, name: file.name };
+    }));
+    loaded.forEach(p => photos.push({ id: nextId++, dataURL: p.dataURL, name: p.name }));
+    renderThumbs();
+    renderPreview();
+    setStatus('');
+  } catch(err){
+    console.error(err);
+    setStatus('Erro ao processar uma das fotos.');
+  }
 }
 
 function renderThumbs(){
@@ -511,9 +663,23 @@ const TEXT_PANEL_MAX_FONT = 11.5;
 const TEXT_PANEL_MIN_FONT = 6.5;
 let manualFontSize = null; // null = ajuste automático ativo
 
+const FONT_MIN = 5, FONT_MAX = 24, FONT_STEP = 0.5;
+
+function updateFontUI(size){
+  fontSizeRange.value = size;
+  fontSizeValue.textContent = size.toFixed(1) + 'px';
+  fontBarValue.textContent = size.toFixed(1) + 'px';
+}
+
+function checkOverflow(){
+  fontWarn.classList.toggle('show', textPanel.scrollHeight > textPanel.clientHeight + 1);
+}
+
 function fitTextPanel(){
   if (manualFontSize !== null){
     textPanel.style.fontSize = manualFontSize.toFixed(1) + 'px';
+    updateFontUI(manualFontSize);
+    checkOverflow();
     return;
   }
   let fontSize = TEXT_PANEL_MAX_FONT;
@@ -522,9 +688,21 @@ function fitTextPanel(){
     fontSize -= 0.3;
     textPanel.style.fontSize = fontSize.toFixed(1) + 'px';
   }
-  fontSizeRange.value = fontSize.toFixed(1);
-  fontSizeValue.textContent = fontSize.toFixed(1) + 'px';
+  updateFontUI(parseFloat(fontSize.toFixed(1)));
+  checkOverflow();
 }
+
+// Aumentar / diminuir a fonte. Ao clicar, o ajuste automático é desligado
+// e o tamanho passa a ser o definido manualmente (partindo do tamanho atual).
+function changeFont(delta){
+  const current = (manualFontSize !== null) ? manualFontSize : (parseFloat(textPanel.style.fontSize) || TEXT_PANEL_MAX_FONT);
+  manualFontSize = Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round((current + delta) * 2) / 2));
+  autoFitCheckbox.checked = false;
+  fontSizeRange.disabled = false;
+  fitTextPanel();
+}
+fontMinusBtn.addEventListener('click', () => changeFont(-FONT_STEP));
+fontPlusBtn.addEventListener('click', () => changeFont(FONT_STEP));
 
 autoFitCheckbox.addEventListener('change', () => {
   fontSizeRange.disabled = autoFitCheckbox.checked;
@@ -534,7 +712,6 @@ autoFitCheckbox.addEventListener('change', () => {
 
 fontSizeRange.addEventListener('input', () => {
   manualFontSize = parseFloat(fontSizeRange.value);
-  fontSizeValue.textContent = manualFontSize.toFixed(1) + 'px';
   fitTextPanel();
 });
 
@@ -547,6 +724,7 @@ document.getElementById('exportPdfBtn').addEventListener('click', async () => {
   if (!validateForExport()) return;
   setStatus('Gerando PDF...');
   try{
+    await ensureLibs(['html2canvas', 'jspdf']);
     const canvas = await html2canvas(previewBox, {scale: 2.2, backgroundColor:'#ffffff', useCORS:true});
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const { jsPDF } = window.jspdf;
@@ -578,8 +756,7 @@ document.getElementById('exportPdfBtn').addEventListener('click', async () => {
     doc.save('registro_pedagogico.pdf');
     setStatus('PDF baixado ✓');
   } catch(err){
-    console.error(err);
-    setStatus('Erro ao gerar o PDF.');
+    showError('Erro ao gerar o PDF.', err);
   }
 });
 
@@ -588,6 +765,7 @@ document.getElementById('exportPptxBtn').addEventListener('click', async () => {
   if (!validateForExport()) return;
   setStatus('Gerando PowerPoint...');
   try{
+    await ensureLibs(['pptxgen']);
     const pptx = new PptxGenJS();
     pptx.defineLayout({ name: 'CUSTOM_WIDE', width: 13.333, height: 7.5 });
     pptx.layout = 'CUSTOM_WIDE';
@@ -650,8 +828,226 @@ document.getElementById('exportPptxBtn').addEventListener('click', async () => {
     await pptx.writeFile({ fileName: 'registro_pedagogico.pptx' });
     setStatus('PowerPoint baixado ✓');
   } catch(err){
-    console.error(err);
-    setStatus('Erro ao gerar o PowerPoint.');
+    showError('Erro ao gerar o PowerPoint.', err);
+  }
+});
+
+// ---------- Export: Word (.docx) ----------
+// Monta o documento Word (uma página paisagem 16:9) com:
+//  - tabela externa com borda preta (igual ao registro)
+//  - à esquerda: grade de fotos (tabela interna, 12 colunas p/ aceitar 2, 3 ou 4 fotos por linha)
+//  - à direita: texto editável (título, habilidades, contextualização)
+function buildDocxDocument(d, o){
+  // d = biblioteca docx | o = { images:[Uint8Array,...] já recortadas, sizes:[{w,h}] em polegadas,
+  //     layout:[4,4,3], title, skills:[{code,desc}], contextTitle, context, align, fontScale }
+  const {
+    Document, Paragraph, TextRun, ImageRun, Table, TableRow, TableCell,
+    WidthType, HeightRule, BorderStyle, AlignmentType, PageOrientation,
+    TableLayoutType, VerticalAlign
+  } = d;
+
+  const IN = 1440;                         // twips por polegada
+  const PAGE_W = 13.333, PAGE_H = 7.5, MARGIN = 0.25;
+  const TABLE_W = PAGE_W - MARGIN * 2;     // 12.833
+  const ROW_H = 6.78;                      // altura da linha externa (cabe na página + parágrafo final)
+  const LEFT_W = 9.55;
+  const RIGHT_W = TABLE_W - LEFT_W;
+
+  const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+  const noBorders = { top: none, bottom: none, left: none, right: none };
+  const thick = { style: BorderStyle.SINGLE, size: 24, color: '111111' };
+
+  const alignMap = { left: AlignmentType.LEFT, center: AlignmentType.CENTER, justify: AlignmentType.JUSTIFIED };
+  const align = alignMap[o.align] || AlignmentType.JUSTIFIED;
+  const scale = o.fontScale || 1;
+  const hp = pt => Math.max(8, Math.round(pt * scale * 2)); // meios-pontos
+
+  // ---------- Grade de fotos ----------
+  const layout = o.layout;
+  const GRID = 12;
+  const innerPad = 0.06;                                   // margem interna da célula esquerda
+  const gridW = LEFT_W - innerPad * 2;
+  const gridH = ROW_H - 0.05 - 0.03;                       // sobra para parágrafo final da célula
+  const rowH = gridH / layout.length;
+  const colTwips = Math.floor((gridW * IN) / GRID);
+
+  let cursor = 0;
+  const photoRows = layout.map(count => {
+    const span = GRID / count;
+    const cells = [];
+    for (let i = 0; i < count; i++){
+      const sz = o.sizes[cursor];
+      const cell = new TableCell({
+        columnSpan: span,
+        width: { size: colTwips * span, type: WidthType.DXA },
+        borders: noBorders,
+        margins: { top: 30, bottom: 30, left: 30, right: 30 },
+        verticalAlign: VerticalAlign.CENTER,
+        children: [new Paragraph({
+          spacing: { before: 0, after: 0, line: 240, lineRule: 'auto' },
+          alignment: AlignmentType.CENTER,
+          children: [new ImageRun({
+            data: o.images[cursor],
+            transformation: { width: Math.round(sz.w * 96), height: Math.round(sz.h * 96) }
+          })]
+        })]
+      });
+      cells.push(cell);
+      cursor++;
+    }
+    return new TableRow({ height: { value: Math.round(rowH * IN), rule: HeightRule.EXACT }, cantSplit: true, children: cells });
+  });
+
+  const photoTable = new Table({
+    width: { size: colTwips * GRID, type: WidthType.DXA },
+    columnWidths: Array(GRID).fill(colTwips),
+    layout: TableLayoutType.FIXED,
+    borders: { ...noBorders, insideHorizontal: none, insideVertical: none },
+    rows: photoRows
+  });
+
+  const tinyPara = () => new Paragraph({ spacing: { before: 0, after: 0, line: 20, lineRule: 'exact' }, children: [new TextRun({ text: '', size: 2 })] });
+
+  // ---------- Texto lateral ----------
+  const font = 'Arial';
+  const textParas = [];
+  textParas.push(new Paragraph({
+    alignment: align, spacing: { before: 0, after: 200, line: 276, lineRule: 'auto' },
+    children: [new TextRun({ text: (o.title || '').toUpperCase(), bold: true, size: hp(13), font })]
+  }));
+  o.skills.forEach(s => {
+    if (!s.code && !s.desc) return;
+    textParas.push(new Paragraph({
+      alignment: align, spacing: { before: 0, after: 160, line: 276, lineRule: 'auto' },
+      children: [
+        new TextRun({ text: `CÓDIGO: ${(s.code || '').toUpperCase()} – `, bold: true, size: hp(10.5), font }),
+        new TextRun({ text: (s.desc || '').toUpperCase(), size: hp(10.5), font })
+      ]
+    }));
+  });
+  textParas.push(new Paragraph({
+    alignment: align, spacing: { before: 240, after: 120, line: 276, lineRule: 'auto' },
+    children: [new TextRun({ text: (o.contextTitle || '').toUpperCase(), bold: true, size: hp(11.5), font })]
+  }));
+  const lines = (o.context || '').toUpperCase().split('\n');
+  textParas.push(new Paragraph({
+    alignment: align, spacing: { before: 0, after: 0, line: 276, lineRule: 'auto' },
+    children: lines.map((ln, i) => new TextRun({ text: ln, size: hp(10.5), font, break: i > 0 ? 1 : 0 }))
+  }));
+
+  // ---------- Tabela externa ----------
+  const outer = new Table({
+    width: { size: Math.round(TABLE_W * IN), type: WidthType.DXA },
+    columnWidths: [Math.round(LEFT_W * IN), Math.round(RIGHT_W * IN)],
+    layout: TableLayoutType.FIXED,
+    borders: { top: thick, bottom: thick, left: thick, right: thick, insideHorizontal: none, insideVertical: none },
+    rows: [new TableRow({
+      // "no mínimo": evita cortes no Word/LibreOffice; se o texto passar, ele continua na página seguinte em vez de ser perdido
+      height: { value: Math.round(ROW_H * IN), rule: HeightRule.ATLEAST },
+      children: [
+        new TableCell({
+          width: { size: Math.round(LEFT_W * IN), type: WidthType.DXA },
+          margins: { top: 60, bottom: 0, left: Math.round(innerPad * IN), right: Math.round(innerPad * IN) },
+          verticalAlign: VerticalAlign.TOP,
+          children: [photoTable, tinyPara()]
+        }),
+        new TableCell({
+          width: { size: Math.round(RIGHT_W * IN), type: WidthType.DXA },
+          margins: { top: 100, bottom: 60, left: 160, right: 140 },
+          verticalAlign: VerticalAlign.TOP,
+          children: textParas
+        })
+      ]
+    })]
+  });
+
+  return new Document({
+    creator: 'Gerador de Registro Pedagógico',
+    title: 'Registro Pedagógico',
+    styles: { default: { document: { run: { font } } } },
+    sections: [{
+      properties: {
+        page: {
+          // docx inverte largura/altura quando orientation = LANDSCAPE
+          size: { width: Math.round(PAGE_H * IN), height: Math.round(PAGE_W * IN), orientation: PageOrientation.LANDSCAPE },
+          margin: { top: Math.round(MARGIN * IN), bottom: Math.round(MARGIN * IN), left: Math.round(MARGIN * IN), right: Math.round(MARGIN * IN), header: 0, footer: 0 }
+        }
+      },
+      children: [outer, tinyPara()]
+    }]
+  });
+}
+
+// Dimensões (polegadas) de cada imagem dentro da grade, usadas no recorte "cover".
+function docxPhotoSizes(layout){
+  const LEFT_W = 9.55, innerPad = 0.06, ROW_H = 6.78;
+  const gridW = LEFT_W - innerPad * 2;
+  const rowH = (ROW_H - 0.08) / layout.length;
+  const sizes = [];
+  layout.forEach(count => {
+    const colW = gridW / count;
+    for (let i = 0; i < count; i++) sizes.push({ w: colW - 0.1, h: rowH - 0.1 });
+  });
+  return sizes;
+}
+
+if (typeof module !== 'undefined') module.exports = { buildDocxDocument, docxPhotoSizes };
+
+
+// Recorta a foto no formato "cover" (preenche o quadro sem distorcer) e devolve os bytes JPEG.
+async function cropCoverToBytes(dataURL, wIn, hIn){
+  const img = await loadImage(dataURL);
+  const DPI = 260;
+  const cw = Math.round(wIn * DPI), ch = Math.round(hIn * DPI);
+  const canvas = document.createElement('canvas');
+  canvas.width = cw; canvas.height = ch;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, cw, ch);
+  const scale = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
+  const sw = cw / scale, sh = ch / scale;
+  const sx = (img.naturalWidth - sw) / 2, sy = (img.naturalHeight - sh) / 2;
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+  const b64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+document.getElementById('exportDocxBtn').addEventListener('click', async () => {
+  if (!validateForExport()) return;
+  setStatus('Gerando Word...');
+  try{
+    await ensureLibs(['docx']);
+    const layout = computeLayout(photos.length);
+    const sizes = docxPhotoSizes(layout);
+    const images = await Promise.all(photos.map((p, i) => cropCoverToBytes(p.dataURL, sizes[i].w, sizes[i].h)));
+    const currentPanelFont = parseFloat(textPanel.style.fontSize) || TEXT_PANEL_MAX_FONT;
+    const doc = buildDocxDocument(window.docx, {
+      images, sizes, layout,
+      title: titleInput.value,
+      skills,
+      contextTitle: contextTitleInput.value,
+      context: contextInput.value,
+      align: textAlign,
+      fontScale: currentPanelFont / TEXT_PANEL_MAX_FONT
+    });
+    const blob = await window.docx.Packer.toBlob(doc);
+    downloadBlob(blob, 'registro_pedagogico.docx');
+    setStatus('Word baixado ✓');
+  } catch(err){
+    showError('Erro ao gerar o Word.', err);
   }
 });
 
@@ -681,7 +1077,14 @@ window.addEventListener('resize', () => {
 });
 
 // ---------- Salvar / Carregar rascunho ----------
-const DRAFT_KEY = 'registro-pedagogico-draft';
+const DRAFT_KEY = 'registro-pedagogico-draft';          // formato antigo (1 rascunho único)
+const INDEX_KEY = 'registro-pedagogico-index';          // lista dos registros salvos
+const REC_PREFIX = 'registro-pedagogico-rec-';          // um registro por chave
+const LAST_KEY = 'registro-pedagogico-last';            // último registro aberto/salvo
+const STORAGE_LIMIT_MB = 5;                             // limite típico do localStorage
+
+let currentRecordId = null;
+let currentRecordName = '';
 
 function currentDraft(){
   return {
@@ -695,26 +1098,268 @@ function currentDraft(){
   };
 }
 
-async function saveDraft(){
-  setStatus('Salvando...');
+function isQuotaError(err){
+  return err && (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED' || err.code === 22 || err.code === 1014);
+}
+
+// ----- índice dos registros -----
+function readIndex(){
   try{
-    const result = await window.storage.set(DRAFT_KEY, JSON.stringify(currentDraft()), false);
-    setStatus(result ? 'Rascunho salvo ✓' : 'Não foi possível salvar.');
+    const list = JSON.parse(localStorage.getItem(INDEX_KEY) || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch(e){ return []; }
+}
+function writeIndex(list){
+  localStorage.setItem(INDEX_KEY, JSON.stringify(list));
+}
+function newRecordId(){
+  return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+function storageUsedMB(){
+  let chars = 0;
+  try{
+    for (let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      chars += k.length + (localStorage.getItem(k) || '').length;
+    }
+  } catch(e){}
+  return chars / (1024 * 1024); // o limite do navegador (~5 MB) é contado em caracteres
+}
+function updateCurrentNameLabel(){
+  const el = document.getElementById('currentName');
+  if (currentRecordName){
+    el.textContent = '📄 ' + currentRecordName;
+    el.title = 'Registro aberto: ' + currentRecordName;
+    el.classList.remove('empty');
+  } else {
+    el.textContent = 'Sem nome (não salvo)';
+    el.title = 'Este registro ainda não foi salvo';
+    el.classList.add('empty');
+  }
+}
+let lastSnapshot = null;
+function markClean(){ try{ lastSnapshot = JSON.stringify(currentDraft()); }catch(e){ lastSnapshot = null; } }
+function isDirty(){
+  if (!hasUnsavedContent()) return false;
+  try{ return JSON.stringify(currentDraft()) !== lastSnapshot; } catch(e){ return true; }
+}
+
+function setCurrent(id, name){
+  markClean();
+  currentRecordId = id;
+  currentRecordName = name || '';
+  try{ if (id) localStorage.setItem(LAST_KEY, id); else localStorage.removeItem(LAST_KEY); } catch(e){}
+  updateCurrentNameLabel();
+}
+
+// Migra o rascunho único do formato antigo para a lista de registros.
+function migrateOldDraft(){
+  try{
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+    const old = JSON.parse(raw);
+    const id = newRecordId();
+    localStorage.setItem(REC_PREFIX + id, raw);
+    const list = readIndex();
+    list.push({ id, name: 'Rascunho anterior', updated: Date.now(), photos: (old.photos || []).length });
+    writeIndex(list);
+    localStorage.removeItem(DRAFT_KEY);
+  } catch(e){ console.warn('Migração do rascunho antigo falhou:', e); }
+}
+
+// ----- salvar com nome -----
+async function saveRecordAs(name){
+  name = name.trim();
+  const list = readIndex();
+  const sameName = list.find(r => r.name.toLowerCase() === name.toLowerCase());
+  let id, existed = false;
+  if (sameName){ id = sameName.id; existed = true; }
+  else if (currentRecordId && currentRecordName.toLowerCase() === name.toLowerCase()){ id = currentRecordId; existed = list.some(r => r.id === id); }
+  else { id = newRecordId(); }
+
+  if (sameName && sameName.id !== currentRecordId){
+    if (!confirm(`Já existe um registro chamado "${sameName.name}". Deseja substituí-lo?`)) return false;
+  }
+
+  setStatus('Salvando...');
+  const key = REC_PREFIX + id;
+  const previous = existed ? localStorage.getItem(key) : null;
+  // libera o espaço da versão anterior antes de gravar (restaurada se falhar)
+  if (previous !== null) localStorage.removeItem(key);
+
+  const attempts = [
+    { max: null,  q: null },
+    { max: 1280, q: 0.78 },
+    { max: 1000, q: 0.68 },
+    { max: 800,  q: 0.58 },
+    { max: 640,  q: 0.50 }
+  ];
+  let saved = false, level = 0, hardError = null;
+  try{
+    for (let i = 0; i < attempts.length && !saved; i++){
+      const a = attempts[i];
+      const draft = currentDraft();
+      if (a.max){
+        draft.photos = await Promise.all(photos.map(async p => ({
+          id: p.id, name: p.name, dataURL: await recompressDataURL(p.dataURL, a.max, a.q)
+        })));
+      }
+      try{
+        localStorage.setItem(key, JSON.stringify(draft));
+        saved = true; level = i;
+      } catch(err){
+        if (!isQuotaError(err)){ hardError = err; break; }
+      }
+    }
+  } catch(err){ hardError = err; }
+
+  if (!saved){
+    if (previous !== null){ try{ localStorage.setItem(key, previous); }catch(e){} }
+    if (hardError){
+      console.error(hardError);
+      setStatus('Erro ao salvar: o navegador bloqueou o armazenamento local (aba anônima ou armazenamento desativado?).');
+    } else {
+      setStatus('Não foi possível salvar: sem espaço no navegador. Exclua registros antigos (botão Abrir) ou remova algumas fotos.');
+    }
+    return false;
+  }
+
+  try{
+    const idx = readIndex().filter(r => r.id !== id);
+    idx.push({ id, name, updated: Date.now(), photos: photos.length });
+    writeIndex(idx);
   } catch(err){
     console.error(err);
-    setStatus('Erro ao salvar (as fotos podem ser grandes demais para o armazenamento).');
+    setStatus('Registro gravado, mas não foi possível atualizar a lista (sem espaço).');
+    return false;
+  }
+  setCurrent(id, name);
+  setStatus(level === 0 ? `Registro "${name}" salvo ✓` : `Registro "${name}" salvo ✓ (fotos reduzidas para caber no armazenamento)`);
+  return true;
+}
+
+function loadRecord(id){
+  try{
+    const raw = localStorage.getItem(REC_PREFIX + id);
+    if (!raw) { alert('Não foi possível encontrar este registro.'); return false; }
+    applyDraft(JSON.parse(raw));
+    const meta = readIndex().find(r => r.id === id);
+    setCurrent(id, meta ? meta.name : '');
+    setStatus(`Registro "${meta ? meta.name : ''}" aberto ✓`);
+    return true;
+  } catch(err){
+    console.error(err);
+    alert('Não foi possível abrir este registro (dados corrompidos).');
+    return false;
   }
 }
 
-async function loadDraft(){
-  try{
-    const result = await window.storage.get(DRAFT_KEY, false);
-    if (!result || !result.value) return;
-    const draft = JSON.parse(result.value);
-    applyDraft(draft);
-  } catch(err){
-    // Nenhum rascunho salvo ainda, ou erro ao ler — segue com o estado em branco.
+function deleteRecord(id){
+  try{ localStorage.removeItem(REC_PREFIX + id); } catch(e){}
+  try{ writeIndex(readIndex().filter(r => r.id !== id)); } catch(e){}
+  if (id === currentRecordId) setCurrent(null, '');
+}
+
+// ----- janelas (modal) -----
+const modalOverlay = document.getElementById('modalOverlay');
+const modalBox = document.getElementById('modalBox');
+function openModal(html){
+  modalBox.innerHTML = html;
+  modalOverlay.classList.add('show');
+  modalOverlay.setAttribute('aria-hidden', 'false');
+}
+function closeModal(){
+  modalOverlay.classList.remove('show');
+  modalOverlay.setAttribute('aria-hidden', 'true');
+  modalBox.innerHTML = '';
+}
+modalOverlay.addEventListener('mousedown', e => { if (e.target === modalOverlay) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && modalOverlay.classList.contains('show')) closeModal(); });
+
+function openSaveModal(){
+  const suggestion = currentRecordName || '';
+  openModal(`
+    <div class="modal-head">
+      <h3>Salvar registro</h3>
+      <p>Dê um nome para encontrar este registro depois. Use o mesmo nome para atualizar um registro já salvo.</p>
+    </div>
+    <div class="modal-body">
+      <input type="text" id="saveNameInput" maxlength="80" placeholder="Ex.: Turma Maternal – Brincadeira no pátio" value="${escapeAttr(suggestion)}">
+      <div id="saveNameError" style="color:var(--danger); font-size:12.5px; margin-top:8px; display:none;">Digite um nome para salvar.</div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" id="saveCancelBtn">Cancelar</button>
+      <button type="button" id="saveConfirmBtn" class="primary">Salvar</button>
+    </div>`);
+  const input = document.getElementById('saveNameInput');
+  input.focus(); input.select();
+  const confirmSave = async () => {
+    const name = input.value.trim();
+    if (!name){ document.getElementById('saveNameError').style.display = 'block'; input.focus(); return; }
+    const btn = document.getElementById('saveConfirmBtn');
+    btn.disabled = true; btn.textContent = 'Salvando...';
+    const ok = await saveRecordAs(name);
+    if (ok) closeModal(); else { btn.disabled = false; btn.textContent = 'Salvar'; }
+  };
+  document.getElementById('saveConfirmBtn').addEventListener('click', confirmSave);
+  document.getElementById('saveCancelBtn').addEventListener('click', closeModal);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') confirmSave(); });
+}
+
+function openListModal(){
+  const list = readIndex().sort((a, b) => b.updated - a.updated);
+  const used = storageUsedMB();
+  let body;
+  if (!list.length){
+    body = '<div class="rec-empty">Nenhum registro salvo ainda.<br>Use o botão <b>💾 Salvar</b> para guardar o registro atual com um nome.</div>';
+  } else {
+    body = '<ul class="rec-list">' + list.map(r => {
+      const when = new Date(r.updated).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+      return `<li class="rec-item${r.id === currentRecordId ? ' is-current' : ''}">
+        <div class="rec-info">
+          <div class="rec-name" title="${escapeAttr(r.name)}">${escapeHtml(r.name)}</div>
+          <div class="rec-meta">${r.photos || 0} foto(s) · salvo em ${when}${r.id === currentRecordId ? ' · aberto agora' : ''}</div>
+        </div>
+        <div class="rec-actions">
+          <button type="button" class="open" data-act="open" data-id="${r.id}">Abrir</button>
+          <button type="button" class="del" data-act="del" data-id="${r.id}" title="Excluir">Excluir</button>
+        </div>
+      </li>`;
+    }).join('') + '</ul>';
   }
+  openModal(`
+    <div class="modal-head">
+      <h3>Registros salvos</h3>
+      <p>Salvos neste navegador, neste computador.</p>
+    </div>
+    <div class="modal-body">
+      ${body}
+      <div class="rec-usage">Espaço usado no navegador: ~${used.toFixed(1)} MB de ~${STORAGE_LIMIT_MB} MB</div>
+    </div>
+    <div class="modal-foot"><button type="button" id="listCloseBtn">Fechar</button></div>`);
+  document.getElementById('listCloseBtn').addEventListener('click', closeModal);
+  modalBox.querySelectorAll('.rec-actions button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const rec = readIndex().find(r => r.id === id);
+      if (btn.dataset.act === 'open'){
+        if (isDirty() && !confirm('Abrir outro registro? As alterações não salvas do registro atual serão perdidas.')) return;
+        if (loadRecord(id)) closeModal();
+      } else if (btn.dataset.act === 'del'){
+        if (!confirm(`Excluir o registro "${rec ? rec.name : ''}"? Esta ação não pode ser desfeita.`)) return;
+        deleteRecord(id);
+        openListModal();
+      }
+    });
+  });
+}
+
+function loadLastRecord(){
+  migrateOldDraft();
+  try{
+    const id = localStorage.getItem(LAST_KEY);
+    if (id && readIndex().some(r => r.id === id)) loadRecord(id);
+  } catch(err){ console.warn('Não foi possível carregar o último registro:', err); }
 }
 
 function applyDraft(draft){
@@ -726,10 +1371,7 @@ function applyDraft(draft){
   manualFontSize = (typeof draft.manualFontSize === 'number') ? draft.manualFontSize : null;
   autoFitCheckbox.checked = (manualFontSize === null);
   fontSizeRange.disabled = autoFitCheckbox.checked;
-  if (manualFontSize !== null){
-    fontSizeRange.value = manualFontSize;
-    fontSizeValue.textContent = manualFontSize.toFixed(1) + 'px';
-  }
+  if (manualFontSize !== null) updateFontUI(manualFontSize);
   photos = draft.photos || [];
   nextId = photos.reduce((max, p) => Math.max(max, p.id), 0) + 1;
   alignGroup.querySelectorAll('.align-btn').forEach(b => b.classList.toggle('active', b.dataset.align === textAlign));
@@ -737,6 +1379,7 @@ function applyDraft(draft){
   renderThumbs();
   updateCounter();
   renderPreview();
+  renderTextPanel();
 }
 
 function hasUnsavedContent(){
@@ -748,21 +1391,24 @@ function hasUnsavedContent(){
 }
 
 function createNew(){
-  if (hasUnsavedContent() && !confirm('Deseja criar um novo registro? As alterações não salvas serão perdidas.')){
+  if (isDirty() && !confirm('Deseja criar um novo registro? As alterações não salvas serão perdidas.')){
     return;
   }
   applyDraft({});
+  setCurrent(null, '');
   setStatus('Novo registro criado ✓');
 }
 
-saveBtn.addEventListener('click', saveDraft);
+saveBtn.addEventListener('click', openSaveModal);
+document.getElementById('openBtn').addEventListener('click', openListModal);
 newBtn.addEventListener('click', createNew);
 
 // ---------- Init ----------
 renderSkills();
 renderTextPanel();
 renderPreview();
-loadDraft();
+loadLastRecord();
+markClean();
 </script>
 </body>
 </html>
