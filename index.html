@@ -146,6 +146,9 @@
   .font-warn.show{display:block;}
   #openBtn{background:#EEF3F1; color:var(--teal-700); border:1px solid var(--teal-500);}
   #openBtn:hover{background:var(--teal-500); color:#fff;}
+  #backupBtn{background:#EEF3F1; color:var(--teal-700); border:1px solid var(--teal-500);}
+  #backupBtn:hover{background:var(--teal-500); color:#fff;}
+  .modal-foot .left{margin-right:auto;}
   .current-name{font-size:12.5px; font-weight:600; color:var(--teal-700); background:#EEF6F3; border:1px solid var(--line); border-radius:999px; padding:5px 12px; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .current-name.empty{color:var(--ink-soft); background:#F6F6F4; font-weight:500;}
   .modal-overlay{position:fixed; inset:0; background:rgba(20,30,26,.55); display:none; align-items:center; justify-content:center; z-index:1000; padding:20px;}
@@ -299,6 +302,7 @@
       <div class="export-bar">
         <button id="saveBtn" type="button">💾 Salvar</button>
         <button id="openBtn" type="button">📂 Abrir</button>
+        <button id="backupBtn" type="button" title="Salva uma cópia completa do registro em um arquivo (escolha a pasta do Google Drive)">☁ Cópia para o Drive</button>
         <button id="newBtn" type="button">＋ Criar novo</button>
         <span id="currentName" class="current-name empty" title="Registro aberto">Sem nome (não salvo)</span>
         <select id="pdfFormatSelect" title="Formato da página do PDF" style="padding:9px 10px; border-radius:8px; border:1px solid var(--line); font-size:13px; font-weight:600; color:var(--ink-soft);">
@@ -1336,8 +1340,12 @@ function openListModal(){
       ${body}
       <div class="rec-usage">Espaço usado no navegador: ~${used.toFixed(1)} MB de ~${STORAGE_LIMIT_MB} MB</div>
     </div>
-    <div class="modal-foot"><button type="button" id="listCloseBtn">Fechar</button></div>`);
+    <div class="modal-foot">
+      <button type="button" id="listImportBtn" class="left" title="Abrir um arquivo de cópia salvo anteriormente (por exemplo, do Drive)">⬆ Importar cópia (arquivo)</button>
+      <button type="button" id="listCloseBtn">Fechar</button>
+    </div>`);
   document.getElementById('listCloseBtn').addEventListener('click', closeModal);
+  document.getElementById('listImportBtn').addEventListener('click', () => { importInput.value = ''; importInput.click(); });
   modalBox.querySelectorAll('.rec-actions button').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
@@ -1353,6 +1361,87 @@ function openListModal(){
     });
   });
 }
+
+// ----- cópia de segurança em arquivo (para guardar no Google Drive, e-mail, pendrive...) -----
+const importInput = document.createElement('input');
+importInput.type = 'file';
+importInput.accept = '.json,application/json';
+importInput.hidden = true;
+document.body.appendChild(importInput);
+
+function safeFileName(name){
+  return (name || 'registro_pedagogico').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 80) || 'registro_pedagogico';
+}
+
+async function exportBackup(){
+  setStatus('Preparando cópia...');
+  try{
+    const payload = {
+      app: 'registro-pedagogico',
+      version: 1,
+      name: currentRecordName || '',
+      savedAt: new Date().toISOString(),
+      draft: currentDraft()
+    };
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    const fileName = safeFileName(currentRecordName) + '.registro.json';
+
+    // 1) Celular/tablet: abre o menu de compartilhar (aparece "Drive" na lista)
+    const file = new File([blob], fileName, { type: 'application/json' });
+    const isTouch = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
+    if (isTouch && navigator.canShare && navigator.canShare({ files: [file] })){
+      try{
+        await navigator.share({ files: [file], title: 'Registro Pedagógico' });
+        setStatus('Cópia compartilhada ✓');
+        return;
+      } catch(err){
+        if (err && err.name === 'AbortError'){ setStatus(''); return; }
+      }
+    }
+    // 2) Chrome/Edge no computador: deixa escolher a pasta (inclusive a do Google Drive para computador)
+    if (window.showSaveFilePicker){
+      try{
+        const handle = await window.showSaveFilePicker({
+          suggestedName: fileName,
+          types: [{ description: 'Cópia do registro pedagógico', accept: { 'application/json': ['.json'] } }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        setStatus('Cópia salva ✓');
+        return;
+      } catch(err){
+        if (err && err.name === 'AbortError'){ setStatus(''); return; }
+        // outro erro: cai para o download comum
+      }
+    }
+    // 3) Demais navegadores: download comum (depois é só enviar o arquivo ao Drive)
+    downloadBlob(blob, fileName);
+    setStatus('Cópia baixada ✓ — envie o arquivo para o seu Drive');
+  } catch(err){
+    showError('Erro ao gerar a cópia.', err);
+  }
+}
+
+async function importBackup(file){
+  if (!file) return;
+  try{
+    const data = JSON.parse(await file.text());
+    if (!data || data.app !== 'registro-pedagogico' || !data.draft) throw new Error('Este arquivo não é uma cópia de registro pedagógico.');
+    if (isDirty() && !confirm('Importar esta cópia? As alterações não salvas do registro atual serão perdidas.')) return;
+    applyDraft(data.draft);
+    setCurrent(null, '');
+    closeModal();
+    const nome = data.name ? ` "${data.name}"` : '';
+    setStatus(`Cópia${nome} carregada ✓ — clique em Salvar para guardá-la neste navegador`);
+    if (data.name) currentRecordName = data.name, updateCurrentNameLabel();
+  } catch(err){
+    showError('Não foi possível importar o arquivo.', err);
+  }
+}
+
+importInput.addEventListener('change', () => importBackup(importInput.files[0]));
+document.getElementById('backupBtn').addEventListener('click', exportBackup);
 
 function loadLastRecord(){
   migrateOldDraft();
