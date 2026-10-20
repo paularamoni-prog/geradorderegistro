@@ -106,6 +106,31 @@
   .skill-entry textarea{flex:1; min-height:44px;}
   .skill-entry .icon-btn{margin-top:0;}
 
+
+  .btn-bncc{
+    width:100%; padding:10px; border-radius:8px; border:none; margin-bottom:10px;
+    background:var(--teal-700); color:#fff; font-weight:600; font-size:13px; cursor:pointer;
+  }
+  .btn-bncc:hover{background:var(--teal-900);}
+  .bncc-modal{max-width:760px;}
+  .bncc-search{margin-top:10px;}
+  .bncc-group{margin-bottom:16px;}
+  .bncc-group h4{
+    margin:0 0 6px; padding:6px 10px; border-radius:6px; background:#EEF6F3;
+    font-family:'Poppins',sans-serif; font-size:13px; color:var(--teal-900);
+  }
+  .bncc-item{
+    display:flex; gap:10px; align-items:flex-start; padding:8px 10px; border-radius:6px;
+    cursor:pointer; border:1px solid transparent; font-size:13px; line-height:1.4;
+  }
+  .bncc-item:hover{background:#F6F9F7;}
+  .bncc-item.checked{background:#FDF1E9; border-color:var(--clay);}
+  .bncc-item.disabled{opacity:.45; cursor:not-allowed;}
+  .bncc-item input{width:auto; margin-top:3px; flex-shrink:0;}
+  .bncc-item .code{font-weight:700; color:var(--teal-900); white-space:nowrap;}
+  .bncc-count{margin-right:auto; align-self:center; font-size:13px; color:var(--ink-soft); font-weight:600;}
+  .bncc-empty{padding:20px; text-align:center; color:var(--ink-soft); font-size:13px;}
+
   .btn-secondary{
     width:100%; padding:9px; border-radius:8px; border:1px dashed var(--teal-500);
     background:transparent; color:var(--teal-700); font-weight:600; font-size:13px; cursor:pointer;
@@ -269,6 +294,7 @@
         <input type="text" id="titleInput" value="HABILIDADES TRABALHADAS:">
 
         <label>Habilidades (código + descrição)</label>
+        <button id="openBnccBtn" type="button" class="btn-bncc">📚 Escolher códigos da BNCC (Educação Infantil – 3 anos)</button>
         <div id="skillsList"></div>
         <button id="addSkillBtn" type="button" class="btn-secondary">+ Adicionar habilidade</button>
 
@@ -590,10 +616,154 @@ skillsList.addEventListener('click', e => {
 });
 
 addSkillBtn.addEventListener('click', () => {
-  if (skills.length >= 8){ alert('Máximo de 8 habilidades para manter o texto legível.'); return; }
+  if (skills.length >= MAX_SKILLS){ alert('Máximo de 8 habilidades para manter o texto legível.'); return; }
   skills.push({code:'', desc:''});
   renderSkills();
   renderTextPanel();
+});
+
+
+// ---------- BNCC – Educação Infantil (crianças bem pequenas: EI02, 1a7m a 3a11m) ----------
+const BNCC_EI02 = [
+  { campo:'O eu, o outro e o nós', itens:[
+    ['EI02EO01','Demonstrar atitudes de cuidado e solidariedade na interação com crianças e adultos.'],
+    ['EI02EO02','Demonstrar imagem positiva de si e confiança em sua capacidade para enfrentar dificuldades e desafios.'],
+    ['EI02EO03','Compartilhar os objetos e os espaços com crianças da mesma faixa etária e adultos.'],
+    ['EI02EO04','Comunicar-se com os colegas e os adultos, buscando compreendê-los e fazendo-se compreender.'],
+    ['EI02EO05','Perceber que as pessoas têm características físicas diferentes, respeitando essas diferenças.'],
+    ['EI02EO06','Respeitar regras básicas de convívio social nas interações e brincadeiras.'],
+    ['EI02EO07','Resolver conflitos nas interações e brincadeiras, com a orientação de um adulto.']
+  ]},
+  { campo:'Corpo, gestos e movimentos', itens:[
+    ['EI02CG01','Apropriar-se de gestos e movimentos de sua cultura no cuidado de si e nos jogos e brincadeiras.'],
+    ['EI02CG02','Deslocar seu corpo no espaço, orientando-se por noções como em frente, atrás, no alto, embaixo, dentro, fora etc., ao se envolver em brincadeiras e atividades de diferentes naturezas.'],
+    ['EI02CG03','Explorar formas de deslocamento no espaço (pular, saltar, dançar), combinando movimentos e seguindo orientações.'],
+    ['EI02CG04','Demonstrar progressiva independência no cuidado do seu corpo.'],
+    ['EI02CG05','Desenvolver progressivamente as habilidades manuais, adquirindo controle para desenhar, pintar, rasgar, folhear, entre outras.']
+  ]},
+  { campo:'Traços, sons, cores e formas', itens:[
+    ['EI02TS01','Criar sons com materiais, objetos e instrumentos musicais, para acompanhar diversos ritmos de música.'],
+    ['EI02TS02','Utilizar materiais variados com possibilidades de manipulação (argila, massa de modelar), criando objetos tridimensionais.'],
+    ['EI02TS03','Utilizar diferentes fontes sonoras disponíveis no ambiente em brincadeiras cantadas, canções, músicas e melodias.']
+  ]},
+  { campo:'Escuta, fala, pensamento e imaginação', itens:[
+    ['EI02EF01','Dialogar com crianças e adultos, expressando seus desejos, necessidades, sentimentos e opiniões.'],
+    ['EI02EF02','Identificar e criar diferentes sons e reconhecer rimas e aliterações em cantigas de roda e textos poéticos.'],
+    ['EI02EF03','Demonstrar interesse e atenção ao ouvir a leitura de histórias e outros textos, diferenciando escrita de ilustrações, e acompanhando, com orientação do adulto-leitor, a direção da leitura (de cima para baixo, da esquerda para a direita).'],
+    ['EI02EF04','Formular e responder perguntas sobre fatos da história narrada, identificando cenários, personagens e principais acontecimentos.'],
+    ['EI02EF05','Relatar experiências e fatos acontecidos, histórias ouvidas, filmes ou peças teatrais assistidos etc.'],
+    ['EI02EF06','Criar e contar histórias oralmente, com base em imagens ou temas sugeridos.'],
+    ['EI02EF07','Manusear diferentes portadores textuais, demonstrando reconhecer seus usos sociais.'],
+    ['EI02EF08','Manipular textos e participar de situações de escuta para ampliar seu contato com diferentes gêneros textuais (parlendas, histórias de aventura, tirinhas, cartazes de sala, cardápios, notícias etc.).'],
+    ['EI02EF09','Manusear diferentes instrumentos e suportes de escrita para desenhar, traçar letras e outros sinais gráficos.']
+  ]},
+  { campo:'Espaços, tempos, quantidades, relações e transformações', itens:[
+    ['EI02ET01','Explorar e descrever semelhanças e diferenças entre as características e propriedades dos objetos (textura, massa, tamanho).'],
+    ['EI02ET02','Observar, relatar e descrever incidentes do cotidiano e fenômenos naturais (luz solar, vento, chuva etc.).'],
+    ['EI02ET03','Compartilhar, com outras crianças, situações de cuidado de plantas e animais nos espaços da instituição e fora dela.'],
+    ['EI02ET04','Identificar relações espaciais (dentro e fora, em cima, embaixo, acima, abaixo, entre e do lado) e temporais (antes, durante e depois).'],
+    ['EI02ET05','Classificar objetos, considerando determinado atributo (tamanho, peso, cor, forma etc.).'],
+    ['EI02ET06','Utilizar conceitos básicos de tempo (agora, antes, durante, depois, ontem, hoje, amanhã, lento, rápido, depressa, devagar).'],
+    ['EI02ET07','Contar oralmente objetos, pessoas, livros etc., em contextos diversos.'],
+    ['EI02ET08','Registrar com números a quantidade de crianças (meninas e meninos, presentes e ausentes) e a quantidade de objetos da mesma natureza (bonecas, bolas, livros etc.).']
+  ]}
+];
+const BNCC_MAP = {};
+BNCC_EI02.forEach(g => g.itens.forEach(([c,d]) => { BNCC_MAP[c] = d; }));
+const MAX_SKILLS = 8;
+let bnccSelected = []; // códigos marcados na janela
+
+function normTxt(t){ return (t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+
+function renderBnccList(){
+  const q = normTxt(document.getElementById('bnccSearch').value.trim());
+  const full = bnccSelected.length >= MAX_SKILLS;
+  let html = '';
+  BNCC_EI02.forEach(g => {
+    const rows = g.itens.filter(([c,d]) => !q || normTxt(c+' '+d+' '+g.campo).includes(q));
+    if (!rows.length) return;
+    html += `<div class="bncc-group"><h4>${escapeHtml(g.campo)}</h4>`;
+    rows.forEach(([c,d]) => {
+      const on = bnccSelected.includes(c);
+      const dis = full && !on;
+      html += `<label class="bncc-item${on?' checked':''}${dis?' disabled':''}">
+        <input type="checkbox" data-code="${c}" ${on?'checked':''} ${dis?'disabled':''}>
+        <span><span class="code">${c}</span> – ${escapeHtml(d)}</span></label>`;
+    });
+    html += '</div>';
+  });
+  document.getElementById('bnccBody').innerHTML = html || '<div class="bncc-empty">Nenhum código encontrado para essa busca.</div>';
+  document.getElementById('bnccCount').textContent = `${bnccSelected.length} / ${MAX_SKILLS} selecionadas`;
+}
+
+function openBnccModal(){
+  bnccSelected = skills.map(s => (s.code||'').trim().toUpperCase()).filter(c => BNCC_MAP[c]);
+  openModal(`
+    <div class="modal-head">
+      <h3>Habilidades da BNCC – Educação Infantil (3 anos)</h3>
+      <p>Crianças bem pequenas (1 ano e 7 meses a 3 anos e 11 meses) – códigos EI02. Marque as habilidades desejadas; a descrição entra junto com o código.</p>
+      <input type="text" id="bnccSearch" class="bncc-search" placeholder="Buscar por código ou palavra (ex: EF03, música, regras)...">
+    </div>
+    <div class="modal-body" id="bnccBody"></div>
+    <div class="modal-foot">
+      <span class="bncc-count" id="bnccCount"></span>
+      <button type="button" id="bnccClear">Limpar seleção</button>
+      <button type="button" id="bnccCancel">Cancelar</button>
+      <button type="button" class="primary" id="bnccApply">Aplicar</button>
+    </div>`);
+  modalBox.classList.add('bncc-modal');
+  renderBnccList();
+  const body = document.getElementById('bnccBody');
+  body.addEventListener('change', e => {
+    const cb = e.target.closest('input[data-code]');
+    if (!cb) return;
+    const c = cb.dataset.code;
+    if (cb.checked){
+      if (bnccSelected.length >= MAX_SKILLS){ cb.checked = false; return; }
+      if (!bnccSelected.includes(c)) bnccSelected.push(c);
+    } else {
+      bnccSelected = bnccSelected.filter(x => x !== c);
+    }
+    renderBnccList();
+  });
+  document.getElementById('bnccSearch').addEventListener('input', renderBnccList);
+  document.getElementById('bnccClear').addEventListener('click', () => { bnccSelected = []; renderBnccList(); });
+  document.getElementById('bnccCancel').addEventListener('click', () => { modalBox.classList.remove('bncc-modal'); closeModal(); });
+  document.getElementById('bnccApply').addEventListener('click', applyBnccSelection);
+  document.getElementById('bnccSearch').focus();
+}
+
+function applyBnccSelection(){
+  // mantém habilidades personalizadas (fora da BNCC) e as BNCC que continuam marcadas
+  const keep = skills.filter(s => {
+    const c = (s.code||'').trim().toUpperCase();
+    if (BNCC_MAP[c]) return bnccSelected.includes(c);
+    return (s.code || s.desc);
+  });
+  const have = keep.map(s => (s.code||'').trim().toUpperCase());
+  bnccSelected.forEach(c => {
+    if (!have.includes(c)) keep.push({code:c, desc:BNCC_MAP[c]});
+  });
+  skills = keep.slice(0, MAX_SKILLS);
+  if (!skills.length) skills = [{code:'', desc:''}];
+  modalBox.classList.remove('bncc-modal');
+  closeModal();
+  renderSkills();
+  renderTextPanel();
+}
+document.getElementById('openBnccBtn').addEventListener('click', openBnccModal);
+
+// Ao digitar um código BNCC conhecido num campo vazio de descrição, preenche a descrição
+skillsList.addEventListener('change', e => {
+  if (e.target.dataset.field !== 'code') return;
+  const idx = Number(e.target.dataset.idx);
+  const c = e.target.value.trim().toUpperCase();
+  if (BNCC_MAP[c] && !skills[idx].desc){
+    skills[idx].code = c;
+    skills[idx].desc = BNCC_MAP[c];
+    renderSkills();
+    renderTextPanel();
+  }
 });
 
 function escapeAttr(str){
@@ -1276,6 +1446,7 @@ function closeModal(){
   modalOverlay.classList.remove('show');
   modalOverlay.setAttribute('aria-hidden', 'true');
   modalBox.innerHTML = '';
+  modalBox.classList.remove('bncc-modal');
 }
 modalOverlay.addEventListener('mousedown', e => { if (e.target === modalOverlay) closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && modalOverlay.classList.contains('show')) closeModal(); });
